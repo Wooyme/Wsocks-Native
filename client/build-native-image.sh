@@ -31,7 +31,7 @@ $SVMBUILD/bin/native-image \
 --enable-all-security-services \
 --allow-incomplete-classpath \
 -H:+JNI \
--H:ReflectionConfigurationFiles=reflectionconfig-linux.json,netty.json \
+-H:ReflectionConfigurationFiles=reflectionconfig-linux.json \
 -H:JNIConfigurationFiles=jniconfig-linux.json \
 -H:+ReportExceptionStackTraces \
 -Dprism.verbose=true \
@@ -49,6 +49,7 @@ $SVMBUILD/bin/native-image \
 -H:IncludeResources=.*png$ \
 -H:IncludeResources=.*css$ \
 -H:IncludeResources=.*fxml$ \
+-H:EnableURLProtocols=http \
 --enable-url-protocols=resource \
 --initialize-at-build-time=com.sun.javafx.PlatformUtil,\
 com.sun.javafx.application.PlatformImpl \

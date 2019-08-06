@@ -2,19 +2,22 @@ package co.zzyun.client;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.util.Scanner;
 
 public class UIController {
+  @FXML
+  public Label statusLabel;
   @FXML
   private ListView<Property> listView;
   @FXML
@@ -25,8 +28,7 @@ public class UIController {
   private TextField usernameTextField;
   @FXML
   private TextField passwordTextField;
-//  @FXML
-//  private CheckBox doZipCheckBox;
+
   private Number selected = -1;
 
 
@@ -38,13 +40,6 @@ public class UIController {
       if (newValue.intValue() < 0) return;
       this.selected = newValue;
       setProperty();
-    });
-    UI.vertx.eventBus().consumer("status-modify",m->{
-      String s = ((JsonObject) m.body()).getString("status");
-      System.out.println("Modify:"+s);
-      Platform.runLater(()->{
-        UI.tray.updateMenu(0,s);
-      });
     });
   }
   @FXML
@@ -79,7 +74,6 @@ public class UIController {
       remotePortTextField.clear();
       usernameTextField.clear();
       passwordTextField.clear();
-//      doZipCheckBox.setSelected(false);
       return;
     }
     remoteAddressTextField.setText(property.getHost());
@@ -116,8 +110,20 @@ public class UIController {
     Integer remotePort = new Integer(remotePortTextField.getText());
     String username = usernameTextField.getText();
     String password = passwordTextField.getText();
-    Property property = new Property(host,remotePort,username,password);
-    UI.vertx.eventBus().send("config-modify",property.toJson());
-    ((Stage) remoteAddressTextField.getScene().getWindow()).close();
+    try {
+      URL url = new URL("http://localhost:1088/index?host="+host+"&port="+remotePort+"&user="+username+"&pass="+password);
+      HttpURLConnection con = (HttpURLConnection) url.openConnection();
+      con.setRequestMethod("GET");
+      if(con.getResponseCode()==200){
+        statusLabel.setText("连接成功");
+        //((Stage) remoteAddressTextField.getScene().getWindow()).close();
+      }else{
+        statusLabel.setText("连接失败:"+con.getResponseMessage());
+      }
+      con.disconnect();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
   }
 }

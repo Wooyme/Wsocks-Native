@@ -4,16 +4,17 @@ import co.zzyun.wsocks.data.*
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpClientOptions
 import io.vertx.core.http.WebSocket
 import io.vertx.core.http.WebSocketConnectOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.NetServer
-import io.vertx.core.net.NetServerOptions
 import io.vertx.core.net.NetSocket
 import org.apache.commons.lang3.RandomStringUtils
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.util.*
 
 class ClientWebSocket : AbstractVerticle() {
@@ -22,7 +23,7 @@ class ClientWebSocket : AbstractVerticle() {
   private val connectMap = HashMap<String, NetSocket>()
   private val port = 1080
   private var remotePort = 1888
-  private lateinit var remoteIp: String
+  private lateinit var remoteHost: String
   private lateinit var userInfo: UserInfo
   private val httpClient: HttpClient by lazy { vertx.createHttpClient(HttpClientOptions().setMaxPoolSize(1)) }
   private lateinit var ws: WebSocket
@@ -30,23 +31,27 @@ class ClientWebSocket : AbstractVerticle() {
   private val handshakeBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x00.toByte())
   private val connSuccessBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x00.toByte()).appendByte(0x00.toByte()).appendByte(0x01.toByte()).appendBytes(ByteArray(6) { 0x0 })
   private val unsupportedBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x08.toByte())
-
+  private var errMsg = ""
   override fun start(promise: Promise<Void>) {
     vertx.eventBus().consumer<JsonObject>("config-modify") {
       if(it.body().size()!=0){
         val property = Property.fromJson(it.body())
         remotePort = property.port
-        remoteIp = property.host
+        remoteHost = property.host
         userInfo = UserInfo.fromJson(it.body())
         println(it.body().toString())
       }
-      login()
+      login(it)
       initSocksServer(port)
+    }
+    vertx.eventBus().consumer<Void>("status"){
+      if(!this::ws.isInitialized) it.reply("")
+      if(ws.isClosed) it.fail(-1,errMsg)
+      else it.reply("ok")
     }
     vertx.setPeriodic(5000) {
       if (this::ws.isInitialized)
         ws.writePing(pingBuf)
-      println("Connect Map size: ${connectMap.size}")
     }
     promise.complete()
   }
@@ -59,15 +64,16 @@ class ClientWebSocket : AbstractVerticle() {
     super.stop()
   }
 
-  private fun login() {
+  private fun login(msg:Message<JsonObject>) {
     val options = WebSocketConnectOptions()
-      .setHost(remoteIp)
+      .setHost(remoteHost)
       .setPort(remotePort)
       .setURI("/"+RandomStringUtils.randomAlphanumeric(5))
       .addHeader(RandomStringUtils.randomAlphanumeric(Random().nextInt(10)+1),userInfo.secret)
     httpClient.webSocket(options) { r ->
       if(r.failed()){
         r.cause().printStackTrace()
+        msg.fail(-1,r.cause().localizedMessage)
         return@webSocket
       }
       val webSocket = r.result()
@@ -86,16 +92,15 @@ class ClientWebSocket : AbstractVerticle() {
         }
         buffer.forceRelease()
       }.exceptionHandler { t ->
-        ws.close()
+        try { this.ws.close() }catch (e:Throwable){}
+        errMsg = t.localizedMessage
         t.printStackTrace()
-        login()
       }
-      try {
-        this.ws.close()
-      }catch (e:Throwable){}
+      try { this.ws.close() }catch (e:Throwable){}
       this.ws = webSocket
       println("Connected to remote server")
-      vertx.eventBus().publish("status-modify", JsonObject().put("status", "$remoteIp:$remotePort"))
+      errMsg = ""
+      msg.reply("ok")
     }
   }
 
