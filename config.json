@@ -1,0 +1,11 @@
+{
+    "port":1889,
+    "maxWaitSnd":8000,
+    "host":"127.0.0.1",
+    "users":[
+        {
+            "user":"wooyme",
+            "pass":"11241124"
+        }
+    ]
+}
