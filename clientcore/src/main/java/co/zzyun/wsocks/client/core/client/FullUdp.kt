@@ -9,7 +9,7 @@ class FullUdp : AbstractClient() {
     val inet = InetAddress.getByName(remoteHost)
     kcp = object : KCP(conv) {
       override fun output(buffer: ByteArray, size: Int) {
-        udpServer.send(remotePort, inet, Buffer.buffer().appendBytes(buffer, 0, size))
+        udpServer.send(xSrcPort, inet, Buffer.buffer().appendBytes(buffer, 0, size))
       }
     }
     kcp.SetMtu(1400)

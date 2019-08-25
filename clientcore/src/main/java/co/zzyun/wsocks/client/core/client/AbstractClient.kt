@@ -31,6 +31,8 @@ abstract class AbstractClient : AbstractVerticle() {
   protected val centerHost by lazy { System.getProperty("center.host") }
   protected val centerPort by lazy { System.getProperty("center.port").toInt() }
   protected val remoteHost: String by lazy { config().getString("remote.host") }
+  protected var xSrcPort:Int = 0
+  protected lateinit var xSrcHost:String
   private val userInfo: UserInfo by lazy { UserInfo.fromJson(config().getJsonObject("user.info")) }
 
   protected val udpServer by lazy { SimpleUdp(1079) }
@@ -77,6 +79,7 @@ abstract class AbstractClient : AbstractVerticle() {
   private fun preLogin(msg: Future<Void>) {
     var loginTimerId = 0L
     this.udpServer.handler {
+      println("DS:${it.length}")
       if (it.port == centerPort) {
         if (myPort != 0) return@handler
         val buffer = Buffer.buffer().appendBytes(it.data,it.offset,it.length)
@@ -94,9 +97,12 @@ abstract class AbstractClient : AbstractVerticle() {
         }
         httpClient.getNow(remotePort, remoteHost, "/login?&i=$myIp&p=$myPort&s=${userInfo.secret}") {
           if (it.statusCode() != 200) return@getNow msg.fail(it.statusMessage())
+          xSrcHost = it.headers()["x-src-host"]
+          xSrcPort = it.headers()["x-src-port"].toInt()
           udpServer.send(it.headers()["x-src-port"].toInt(), InetAddress.getByName(it.headers()["x-src-host"]), Buffer.buffer("go"))
           val conv = it.headers()["x-conv"].toLong()
           initKcp(conv)
+          msg.complete()
         }
       } else {
         if (!isKcpInitialized()) return@handler

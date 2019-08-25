@@ -12,7 +12,7 @@ import java.net.SocketException;
 public class SimpleUdp extends Thread {
   private DatagramSocket socket;
   private boolean running = true;
-  private byte[] buf = new byte[256];
+  private byte[] buf = new byte[65535];
   private Handler<DatagramPacket> handler;
   public SimpleUdp(int port) {
     try {
