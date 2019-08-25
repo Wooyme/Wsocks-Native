@@ -156,7 +156,7 @@ public abstract class KCP {
         }
     }
 
-    long conv = 0;
+    public long conv = 0;
     //long user = user;
     long snd_una = 0;
     long snd_nxt = 0;
@@ -174,6 +174,7 @@ public abstract class KCP {
     long mtu = IKCP_MTU_DEF;
     long mss = this.mtu - IKCP_OVERHEAD;
     byte[] buffer = new byte[(int) (mtu + IKCP_OVERHEAD) * 3];
+
     ArrayList<Segment> nrcv_buf = new ArrayList<>(128);
     ArrayList<Segment> nsnd_buf = new ArrayList<>(128);
     ArrayList<Segment> nrcv_que = new ArrayList<>(128);

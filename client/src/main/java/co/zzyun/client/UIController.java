@@ -1,20 +1,16 @@
 package co.zzyun.client;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
-import javafx.stage.Stage;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.Scanner;
-
 public class UIController {
   @FXML
   public Label statusLabel;
@@ -31,10 +27,9 @@ public class UIController {
 
   private Number selected = -1;
 
-
   @FXML
   protected void initialize() {
-    loadFromJson();
+    loadFromFile();
     listView.getSelectionModel()
       .selectedIndexProperty().addListener((observable, oldValue, newValue) -> {
       if (newValue.intValue() < 0) return;
@@ -50,7 +45,7 @@ public class UIController {
     String password = passwordTextField.getText();
     listView.getItems().add(new Property(host,remotePort,username,password));
     this.selected = listView.getItems().size()-1;
-    saveToJson();
+    saveToFile();
   }
 
   public void onRemoveButtonClicked(ActionEvent actionEvent) {
@@ -62,7 +57,7 @@ public class UIController {
       this.listView.getSelectionModel().select(this.selected.intValue());
     }
     setProperty();
-    saveToJson();
+    saveToFile();
   }
 
   private void setProperty() {
@@ -82,27 +77,31 @@ public class UIController {
     passwordTextField.setText(property.getPassword());
   }
 
-  private void saveToJson(){
-    JsonArray array = new JsonArray();
-    File file = new File(Paths.get(System.getProperty("user.dir"),"save.json").toString());
-    this.listView.getItems().forEach(p->{
-      array.add(p.toJson());
-    });
+  private void saveToFile(){
+    File file = new File(Paths.get(System.getProperty("user.dir"),"save.cfg").toString());
     try {
       BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-      writer.write(array.encode());
+      StringBuilder sb = new StringBuilder();
+      this.listView.getItems().forEach(v-> sb.append(v.toLocalString()).append("\n"));
+      writer.write(sb.toString());
       writer.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
-  private void loadFromJson(){
-    File file = new File(Paths.get(System.getProperty("user.dir"),"save.json").toString());
-    try {
-      String content = new Scanner(file).useDelimiter("\\Z").next();
-      new JsonArray(content).forEach(p-> this.listView.getItems().add(Property.fromJson((JsonObject) p)));
-    } catch (FileNotFoundException e) { }
+  private void loadFromFile(){
+    File file = new File(Paths.get(System.getProperty("user.dir"),"save.cfg").toString());
+    try{
+      BufferedReader reader = new BufferedReader(new FileReader(file));
+      String line;
+      while((line=reader.readLine())!=null){
+        this.listView.getItems().add(Property.fromLocalString(line));
+      }
+      reader.close();
+    }catch (IOException e){
+      e.printStackTrace();
+    }
   }
 
   public void onConfirmButtonClicked(ActionEvent actionEvent) {
@@ -110,20 +109,26 @@ public class UIController {
     Integer remotePort = new Integer(remotePortTextField.getText());
     String username = usernameTextField.getText();
     String password = passwordTextField.getText();
-    try {
-      URL url = new URL("http://localhost:1088/index?host="+host+"&port="+remotePort+"&user="+username+"&pass="+password);
-      HttpURLConnection con = (HttpURLConnection) url.openConnection();
-      con.setRequestMethod("GET");
-      if(con.getResponseCode()==200){
-        statusLabel.setText("连接成功");
-        //((Stage) remoteAddressTextField.getScene().getWindow()).close();
-      }else{
-        statusLabel.setText("连接失败:"+con.getResponseMessage());
+    statusLabel.setText("正在连接...");
+    new Thread(()->{
+      try {
+        URL url = new URL("http://127.0.0.1:1088/index?host="+host+"&port="+remotePort+"&user="+username+"&pass="+password);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("GET");
+        final String msg = con.getResponseMessage();
+        if(con.getResponseCode()==200){
+          Platform.runLater(()->{
+            statusLabel.setText("连接成功");
+          });
+        }else{
+          Platform.runLater(()->{
+            statusLabel.setText("连接失败:"+msg.substring(10));
+          });
+        }
+        con.disconnect();
+      } catch (IOException e) {
       }
-      con.disconnect();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+    }).start();
 
   }
 }

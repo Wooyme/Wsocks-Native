@@ -1,0 +1,1 @@
+/usr/bin/cc -fPIC   -shared -Wl,-soname,libUdp.so -o libUdp.so CMakeFiles/Udp.dir/udp.c.o CMakeFiles/Udp.dir/kcp_jni.c.o 

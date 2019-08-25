@@ -7,11 +7,14 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="common" />
+        <module name="wsocks" />
         <module name="client" />
+        <module name="center" />
         <module name="clientcore" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="center" target="8" />
       <module name="client" target="8" />
       <module name="clientcore" target="8" />
       <module name="common" target="1.8" />

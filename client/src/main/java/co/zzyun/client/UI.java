@@ -1,6 +1,6 @@
 package co.zzyun.client;
 
-import com.sun.glass.ui.gtk.GtkTray;
+import com.sun.glass.ui.Tray;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -17,20 +17,21 @@ import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UI extends Application {
-  public static GtkTray tray;
+  public static Tray tray;
   private static Process process;
+
   public static void main(String[] args) {
     String pwd = System.getProperty("user.dir");
-    String java_library_path;
-    if (args.length >= 1) java_library_path = args[0];
-    else java_library_path = "libs";
-    System.setProperty("javafx.verbose", "true");
-    System.setProperty("prism.verbose", "true");
-    System.setProperty("java.library.path", java_library_path);
+    System.setProperty("java.library.path", "libs");
+    System.setProperty("prism.order", "sw");
+    System.setProperty("prism.text", "t2k");
+    System.setProperty("prism.nativepisces", "false");
+    System.setProperty("prism.allowhidpi", "false");
+    System.setProperty("prism.vsync", "false");
     Runtime rt = Runtime.getRuntime();
     try {
-      process = rt.exec(Paths.get(pwd,"client-core").toString()+" -Xmx128m");
-      if(process.isAlive()){
+      process = rt.exec(Paths.get(pwd, "client-core").toString() + " -Xmx128m");
+      if (process.isAlive()) {
         System.out.println("Client-core startup");
       }
     } catch (IOException e) {
@@ -43,20 +44,23 @@ public class UI extends Application {
   @Override
   public void start(Stage primaryStage) {
     String pwd = System.getProperty("user.dir");
-    tray = new GtkTray(Paths.get(pwd,"icon.png").toString());
+    tray = new Tray(Paths.get(pwd, "icon.ico").toString(), false);
     tray.addMenu("Open", () -> Platform.runLater(primaryStage::show));
     final AtomicBoolean isPac = new AtomicBoolean(true);
-    tray.addMenu("PAC mode",()->{
-      if(isPac.get()) {
+    tray.addMenu("PAC mode", () -> {
+      if (isPac.get()) {
         tray.updateMenu(1, "Global mode");
         isPac.set(false);
-      }else{
+      } else {
         tray.updateMenu(1, "Pac mode");
         isPac.set(true);
       }
     });
-    tray.addMenu("Exit",()->{
-      process.destroyForcibly();
+    tray.addMenu("Exit", () -> {
+      try {
+        process.destroyForcibly();
+      } catch (Throwable e) {
+      }
       System.exit(0);
     });
     Parent root;
@@ -69,26 +73,27 @@ public class UI extends Application {
     primaryStage.setTitle("WSocks");
     Scene scene = new Scene(root, 660, 295);
     primaryStage.setScene(scene);
-    primaryStage.setOnShowing(e->{
+    primaryStage.setOnShowing(e -> {
       try {
-        URL url = new URL("http://localhost:1088/index");
+        URL url = new URL("http://127.0.0.1:1088/index");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         if (con.getResponseCode() == 200) {
           ((Label) scene.lookup("#statusLabel")).setText("连接成功");
-        }else if(con.getResponseCode()==201){
+        } else if (con.getResponseCode() == 201) {
           ((Label) scene.lookup("#statusLabel")).setText("等待..");
         } else {
-          ((Label) scene.lookup("#statusLabel")).setText("失败:"+con.getResponseMessage().substring(0,6));
+          ((Label) scene.lookup("#statusLabel")).setText("失败:" + con.getResponseMessage().substring(0, 6));
         }
         con.disconnect();
-      }catch (IOException err){
+      } catch (IOException err) {
         err.printStackTrace();
-        ((Label) scene.lookup("#statusLabel")).setText("核心崩溃，请重启本程序");
+        ((Label) scene.lookup("#statusLabel")).setText("核心启动失败，请重启本程序");
       }
     });
     Platform.setImplicitExit(false);
     primaryStage.setOnCloseRequest(event -> Platform.runLater(primaryStage::hide));
+    System.out.println(System.getProperty("java.awt.graphicsenv"));
     primaryStage.show();
   }
 }

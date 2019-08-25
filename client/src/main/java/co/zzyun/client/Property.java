@@ -1,8 +1,6 @@
 package co.zzyun.client;
 
-import io.vertx.core.json.JsonObject;
-
-public class Property {
+public class Property{
   private String host;
   private int port;
   private String username;
@@ -52,17 +50,19 @@ public class Property {
     return this.host+":"+this.port;
   }
 
-  public JsonObject toJson(){
-    return new JsonObject().put("host",this.host)
-      .put("port",this.port)
-      .put("user",this.username)
-      .put("pass",this.password);
+  public String toLocalString(){
+    return this.host+":"+this.port+":"+this.username+":"+this.password;
   }
 
-  public static Property fromJson(JsonObject json){
-    return new Property(json.getString("host")
-      ,json.getInteger("port")
-      ,json.getString("user")
-      ,json.getString("pass"));
+  public static Property fromLocalString(String line){
+    int hostEnd = line.indexOf(":");
+    int portEnd = line.indexOf(":",hostEnd+1);
+    int userEnd = line.indexOf(":",portEnd+1);
+    String host = line.substring(0,hostEnd);
+    int port = Integer.valueOf(line.substring(hostEnd+1,portEnd));
+    String user = line.substring(portEnd+1,userEnd);
+    String pass = line.substring(userEnd+1);
+    return new Property(host,port,user,pass);
   }
+
 }

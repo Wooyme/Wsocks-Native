@@ -10,7 +10,6 @@ class RawData(userInfo: UserInfo,buffer:Buffer) {
     val uuidLen = decrypted.getIntLE(0)
     uuid = decrypted.getString(Int.SIZE_BYTES,Int.SIZE_BYTES+uuidLen)
     data = decrypted.getBuffer(Int.SIZE_BYTES+uuidLen,decrypted.length())
-    decrypted.forceRelease()
   }
   companion object {
     fun create(userInfo: UserInfo,uuid:String,data:Buffer):Buffer {
@@ -19,7 +18,6 @@ class RawData(userInfo: UserInfo,buffer:Buffer) {
         .appendString(uuid)
         .appendBuffer(data)
       val encryptedBuffer = Aes.encrypt(buf.bytes,userInfo.key,true)
-      buf.forceRelease()
       return Buffer.buffer()
         .appendIntLE(Flag.RAW.ordinal)
         .appendBytes(encryptedBuffer)

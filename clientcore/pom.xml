@@ -22,7 +22,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
-      <version>4.0.0-SNAPSHOT</version>
+      <version>3.6.3</version>
     </dependency>
     <dependency>
       <groupId>co.zzyun</groupId>

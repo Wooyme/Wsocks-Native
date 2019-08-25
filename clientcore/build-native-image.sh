@@ -34,7 +34,15 @@ $SVMBUILD/bin/native-image \
 -Dprism.verbose=true \
 -cp $CLASSPATH \
 -jar target/client-core-1.0-SNAPSHOT.jar \
--H:Name=client-core \
-
+-H:Name=client-core
+#$--initialize-at-build-time=org.apache.log4j.Logger,\
+#org.slf4j.helpers.NOPLogger,\
+#org.apache.log4j.Priority,\
+#org.apache.log4j.Level,\
+#org.slf4j.helpers.SubstituteLoggerFactory,\
+#org.slf4j.LoggerFactory,\
+#org.slf4j.helpers.NOPLoggerFactory,\
+#org.slf4j.helpers.Util,\
+#org.apache.log4j.Log4jLoggerFactory
 JAVA_HOME=$OLD_JAVA_HOME
 $SVMBUILD/bin/native-image --server-shutdown-all
