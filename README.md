@@ -1,9 +1,14 @@
 Wsocks Native
-==
+===
 Different from the kotlin native version. This version rely on Graalvm to build native image.
 
+
+Update
+======
+2018-8-26: 底层换成kcp
+
 Building
-==
+===
 
 Make sure u install maven first, if not u can also use the mvnw. (but I prefer to install the global maven.
 
