@@ -14,7 +14,8 @@ val unitMap = HashMap<Long, TransportUnit>()
 
 fun main(args: Array<String>) {
   System.setProperty("io.netty.noUnsafe","true")
-  System.loadLibrary("Udp")
+  //System.loadLibrary("Udp")
+  PcapUtil.initPcap(System.getProperty("mac.src"),System.getProperty("mac.gateway"))
   val serverConfig = JsonObject(File(args[0]).readText())
 
   val serverImpl = when(serverConfig.getString("server")){

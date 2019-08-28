@@ -1,10 +1,7 @@
 package co.zzyun.wsocks.server
 
-import co.zzyun.wsocks.KCP
-import co.zzyun.wsocks.TransportUnit
-import co.zzyun.wsocks.UdpUtil
+import co.zzyun.wsocks.*
 import co.zzyun.wsocks.data.UserInfo
-import co.zzyun.wsocks.unitMap
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
@@ -12,6 +9,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
+import java.net.Inet4Address
 import java.util.*
 import kotlin.random.Random
 
@@ -42,7 +40,7 @@ abstract class AbstractServer : AbstractVerticle() {
       val user = this.userMap[it.request().getParam("s")] ?: return@handler it.response().setStatusCode(404).end()
       val dstPort = it.request().getParam("p").toInt()
       val dstIp = it.request().getParam("i")
-      val kcp = newKcp(srcIp,srcPort,dstIp,dstPort,conv)
+      val kcp = newKcp(srcIp,srcPort.toShort(),dstIp,dstPort.toShort(),conv)
       onLogin(dstIp,dstPort,conv)
       deployUnit(user,kcp){id->
         it.response().setStatusCode(200)
@@ -65,12 +63,15 @@ abstract class AbstractServer : AbstractVerticle() {
   protected abstract fun initServer()
   open fun onLogin(ip:String,port:Int,conv:Long){}
 
-  private fun newKcp(srcIp:String, srcPort:Int, dstIp:String, dstPort:Int, conv:Long):KCP{
-    val ptr = UdpUtil.initRaw(srcIp, srcPort, dstIp, dstPort)
+  private fun newKcp(srcIp:String, srcPort:Short, dstIp:String, dstPort:Short, conv:Long):KCP{
+    val srcIpAddress = Inet4Address.getByName(srcIp)
+    val dstIpAddress = Inet4Address.getByName(dstIp)
+    //val ptr = UdpUtil.initRaw(srcIp, srcPort, dstIp, dstPort)
     val kcp =
       object : KCP(conv) {
         override fun output(buffer: ByteArray, size: Int) {
-          UdpUtil.sendUdp(ptr, buffer, size)
+          //UdpUtil.sendUdp(ptr, buffer, size)
+          PcapUtil.sendUdp(srcIpAddress,dstIpAddress,srcPort,dstPort,Arrays.copyOfRange(buffer,0,size))
         }
       }
     kcp.SetMtu(mtu)

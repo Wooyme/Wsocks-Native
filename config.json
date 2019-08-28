@@ -6,7 +6,7 @@
     "maxWaitSnd":8000,
     "WndSize": 256,
     "mtu": 1400,
-    "host":"107.174.254.144",
+    "host":"192.168.1.104",
     "users":[
         {
             "user":"wooyme",

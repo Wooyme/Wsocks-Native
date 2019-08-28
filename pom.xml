@@ -53,6 +53,16 @@
       <artifactId>commons-codec</artifactId>
       <version>1.4</version>
     </dependency>
+    <dependency>
+      <groupId>org.pcap4j</groupId>
+      <artifactId>pcap4j-core</artifactId>
+      <version>1.7.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.pcap4j</groupId>
+      <artifactId>pcap4j-packetfactory-static</artifactId>
+      <version>1.7.1</version>
+    </dependency>
 
     <dependency>
       <groupId>org.apache.commons</groupId>

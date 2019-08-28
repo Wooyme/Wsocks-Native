@@ -10,6 +10,9 @@ import java.util.*
 import kotlin.collections.HashMap
 
 class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWaitSnd:Int):AbstractVerticle() {
+  companion object {
+      private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
+  }
   private val netClient by lazy { vertx.createNetClient() }
   private val conMap = HashMap<String,NetSocket>()
   private var timerID:Long = 0L
@@ -20,6 +23,9 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
     super.start()
     val data = ByteArray(8 * 1024 * 1024)
     vertx.eventBus().localConsumer<Buffer>("unit-${kcp.conv}"){
+      if(debug){
+        println("[unit-${kcp.conv}]: DataLen ${it.body().length()}")
+      }
       kcp.Input(it.body().bytes)
     }
     this.timerID = vertx.setPeriodic(10) {
