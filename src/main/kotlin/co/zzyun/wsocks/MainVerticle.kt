@@ -2,6 +2,7 @@ package co.zzyun.wsocks
 
 import co.zzyun.wsocks.server.FullUdp
 import co.zzyun.wsocks.server.HttpUdp
+import co.zzyun.wsocks.server.PcapUdp
 import co.zzyun.wsocks.server.WebSocketUdp
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Vertx
@@ -22,6 +23,7 @@ fun main(args: Array<String>) {
     "websocket"-> WebSocketUdp()
     "http"-> HttpUdp()
     "udp"->FullUdp()
+    "pcap"->PcapUdp()
     else -> WebSocketUdp()
   }
   val vertxOptions = VertxOptions()

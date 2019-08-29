@@ -1,9 +1,9 @@
 package co.zzyun.wsocks
 
-import org.pcap4j.core.BpfProgram
 import org.pcap4j.core.PacketListener
 import org.pcap4j.core.PcapHandle
 import org.pcap4j.core.PcapNetworkInterface
+import org.pcap4j.core.Pcaps
 import org.pcap4j.packet.*
 import org.pcap4j.packet.namednumber.EtherType
 import org.pcap4j.packet.namednumber.IpNumber
@@ -14,25 +14,22 @@ import org.pcap4j.util.MacAddress
 import org.pcap4j.util.NifSelector
 import java.net.Inet4Address
 import java.net.InetAddress
-import java.net.UnknownHostException
-import java.util.concurrent.Executors
 
 object PcapUtil {
 
   private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
   private const val MTU = 1400
-  private lateinit var srcMacAddress: MacAddress
-  private lateinit var gatewayMacAddress: MacAddress
-  private lateinit var nif: PcapNetworkInterface
-  private lateinit var sendHandle: PcapHandle
+  lateinit var srcMacAddress: MacAddress
+  lateinit var gatewayMacAddress: MacAddress
+  lateinit var nif: PcapNetworkInterface
+  lateinit var sendHandle: PcapHandle
   fun initPcap(srcMacAddress: String, gatewayMacAddress: String) {
     PcapUtil.srcMacAddress = MacAddress.getByName(srcMacAddress, ":")
     PcapUtil.gatewayMacAddress = MacAddress.getByName(gatewayMacAddress, ":")
-    nif = NifSelector().selectNetworkInterface()
+    nif = Pcaps.findAllDevs()[0]
+    println(nif.name)
     PcapUtil.sendHandle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
-    if(System.getProperty("sniffer.enable")?.toBoolean() == true){
-      enableSniffer()
-    }
+    //enableSniffer()
   }
 
   private fun enableSniffer(){
@@ -42,12 +39,16 @@ object PcapUtil {
       if(ethernetPacket.header.type== EtherType.IPV4) {
         try {
           val ipPacket = ethernetPacket.get(IpV4Packet::class.java)
-          println("[Sniffer][${ethernetPacket.header.type.name()}] SrcMac:${ethernetPacket.header.srcAddr} DstMac:${ethernetPacket.header.dstAddr} SrcIp:${ipPacket.header.srcAddr} DstIp:${ipPacket.header.dstAddr}")
+          if(System.getProperty("sniffer.debug")?.toBoolean()==true)
+            println("[Sniffer][${ethernetPacket.header.type.name()}] SrcMac:${ethernetPacket.header.srcAddr} DstMac:${ethernetPacket.header.dstAddr} SrcIp:${ipPacket.header.srcAddr} DstIp:${ipPacket.header.dstAddr}")
+          if(ipPacket.header.protocol == IpNumber.UDP){
+            val udpPacket = ipPacket.get(UdpPacket::class.java)
+
+          }
         }catch (e:Throwable){
           e.printStackTrace()
         }
       }
-
     }
     Thread {
       try {
@@ -56,7 +57,6 @@ object PcapUtil {
         e.printStackTrace()
       }
     }.start()
-    println("Sniffer enabled!")
   }
 
   fun sendUdp(srcIpAddress: InetAddress, dstIpAddress: InetAddress, srcPort: Short, dstPort: Short, rawData: ByteArray) {
