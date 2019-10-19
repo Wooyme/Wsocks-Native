@@ -10,13 +10,13 @@ class UserInfo(val username:String,val password:String,val key:ByteArray,val max
   companion object {
     fun fromJson(json:JsonObject): UserInfo {
       val array = json.getString("pass").toByteArray()
-      val raw = if (16 > array.size)
+      val key = if (16 > array.size)
         array + ByteArray(16 - array.size) { 0x06 }
       else
         array
       return UserInfo(json.getString("user")
           ,json.getString("pass")
-          ,raw
+          ,key
           ,json.getInteger("multiple")?:-1
           ,json.getLong("limit")?:-1L)
     }

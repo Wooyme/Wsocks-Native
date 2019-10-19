@@ -6,7 +6,6 @@ import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import java.io.File;
@@ -23,8 +22,9 @@ public class UI extends Application {
   public static void main(String[] args) {
     String pwd = System.getProperty("user.dir");
     System.setProperty("java.library.path", "libs");
-    System.setProperty("prism.order", "sw");
-    System.setProperty("prism.text", "t2k");
+
+    //System.setProperty("prism.order", "sw");
+    //System.setProperty("prism.text", "t2k");
     System.setProperty("prism.nativepisces", "false");
     System.setProperty("prism.allowhidpi", "false");
     System.setProperty("prism.vsync", "false");
@@ -71,24 +71,23 @@ public class UI extends Application {
       return;
     }
     primaryStage.setTitle("WSocks");
-    Scene scene = new Scene(root, 660, 295);
+    Scene scene = new Scene(root, 560, 270);
     primaryStage.setScene(scene);
     primaryStage.setOnShowing(e -> {
       try {
-        URL url = new URL("http://127.0.0.1:1088/index");
+        URL url = new URL("http://127.0.0.1:1078/status");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         if (con.getResponseCode() == 200) {
-          ((Label) scene.lookup("#statusLabel")).setText("连接成功");
+          primaryStage.setTitle("连接成功");
         } else if (con.getResponseCode() == 201) {
-          ((Label) scene.lookup("#statusLabel")).setText("等待..");
+          primaryStage.setTitle("等待...");
         } else {
-          ((Label) scene.lookup("#statusLabel")).setText("失败:" + con.getResponseMessage().substring(0, 6));
+          primaryStage.setTitle("失败:" + con.getResponseMessage().substring(0, 6));
         }
         con.disconnect();
       } catch (IOException err) {
-        err.printStackTrace();
-        ((Label) scene.lookup("#statusLabel")).setText("核心启动失败，请重启本程序");
+        primaryStage.setTitle("核心启动失败，请重启本程序");
       }
     });
     Platform.setImplicitExit(false);

@@ -13,7 +13,7 @@ OLD_JAVA_HOME=$JAVA_HOME
 echo 'Switching java home to:'$JAVA_HOME
 
 PWD=$(pwd)
-CLASSPATH="classes:$JFX_LIB/ext/jfxrt.jar:$SVMBUILD/include/linux:$SVMBUILD/bin"
+CLASSPATH="classes:$JFX_LIB/ext/jfxrt.jar:$SVMBUILD/include/linux:$SVMBUILD/bin:target/lib/commons-codec-1.4.jar:target/lib/commons-lang3-3.8.1.jar:target/lib/commons-text-1.6.jar"
 
 export PATH=$JAVA_HOME/bin:$JFX_LIB:$PATH
 

@@ -39,8 +39,8 @@ public class SimpleUdp extends Thread {
     socket.close();
   }
 
-  public SimpleUdp send(int port, InetAddress address, Buffer buffer){
-    DatagramPacket packet = new DatagramPacket(buffer.getBytes(),buffer.length(),address,port);
+  public SimpleUdp send(int port, InetAddress address, byte[] buf,int size){
+    DatagramPacket packet = new DatagramPacket(buf,size,address,port);
     try {
       this.socket.send(packet);
     } catch (IOException e) {

@@ -3,13 +3,14 @@ package co.zzyun.wsocks
 import co.zzyun.wsocks.data.*
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.net.NetSocket
 import java.net.InetAddress
 import java.util.*
 import kotlin.collections.HashMap
 
-class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWaitSnd:Int):AbstractVerticle() {
+class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd:Int,private val token:String,private val httpClient:HttpClient,private val centerUrl:String):AbstractVerticle() {
   companion object {
       private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
   }
@@ -17,8 +18,9 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
   private val conMap = HashMap<String,NetSocket>()
   private var timerID:Long = 0L
   private var heartTimerID:Long = 0L
+  private var updateTimerID:Long = 0L
   private var lastAccessTs = 0L
-
+  private var usage = 0L
   override fun start() {
     super.start()
     val data = ByteArray(8 * 1024 * 1024)
@@ -42,6 +44,11 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
         this.stop()
       }
     }
+
+    this.updateTimerID = vertx.setPeriodic(6*60*1000){
+      this.httpClient.getAbs("$centerUrl/update?token=$token&usage=$usage"){}.end()
+      this.usage = 0
+    }
   }
 
   override fun stop() {
@@ -53,15 +60,20 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
     vertx.cancelTimer(heartTimerID)
     unitMap.remove(kcp.conv)
     kcp.clean()
+    this.httpClient.getAbs("$centerUrl/offline?token=$token"){}.end()
+    this.httpClient.getAbs("$centerUrl/update?token=$token&usage=$usage"){}.end()
   }
 
   private fun handle(buffer:Buffer){
     this.lastAccessTs = Date().time
     when (buffer.getIntLE(0)) {
-      Flag.CONNECT.ordinal -> clientConnectHandler(ClientConnect(userInfo, buffer))
-      Flag.RAW.ordinal -> clientRawHandler(RawData(userInfo, buffer))
-      Flag.DNS.ordinal -> clientDNSHandler(DnsQuery(userInfo, buffer))
-      Flag.EXCEPTION.ordinal -> clientExceptionHandler(co.zzyun.wsocks.data.Exception(userInfo, buffer))
+      Flag.CONNECT.ordinal -> clientConnectHandler(ClientConnect(key, buffer))
+      Flag.RAW.ordinal -> {
+        usage+=buffer.length()
+        clientRawHandler(RawData(key, buffer))
+      }
+      Flag.DNS.ordinal -> clientDNSHandler(DnsQuery(key, buffer))
+      Flag.EXCEPTION.ordinal -> clientExceptionHandler(co.zzyun.wsocks.data.Exception(key, buffer))
       Flag.HEART.ordinal->{} // 啥也不用干
       else -> println(buffer.getIntLE(0))
     }
@@ -70,7 +82,7 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
   private fun clientConnectHandler(data: ClientConnect) {
     netClient.connect(data.port, InetAddress.getByName(data.host).hostAddress) {nr->
       if(nr.failed()){
-        kcp.Send(co.zzyun.wsocks.data.Exception.create(userInfo,data.uuid,nr.cause().localizedMessage).bytes)
+        kcp.Send(co.zzyun.wsocks.data.Exception.create(key,data.uuid,nr.cause().localizedMessage).bytes)
         return@connect
       }
       val net = nr.result()
@@ -82,22 +94,22 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
           }
         }
         if(kcp.WaitSnd()>maxWaitSnd) wait()
-        kcp.Send(RawData.create(userInfo, data.uuid, buffer).bytes)
+        kcp.Send(RawData.create(key, data.uuid, buffer).bytes)
       }.closeHandler {
         conMap.remove(data.uuid)
-        kcp.Send(co.zzyun.wsocks.data.Exception.create(userInfo,data.uuid,"").bytes)
+        kcp.Send(co.zzyun.wsocks.data.Exception.create(key,data.uuid,"").bytes)
       }.exceptionHandler {
         conMap.remove(data.uuid)
-        kcp.Send(co.zzyun.wsocks.data.Exception.create(userInfo,data.uuid,"").bytes)
+        kcp.Send(co.zzyun.wsocks.data.Exception.create(key,data.uuid,"").bytes)
       }
       conMap[data.uuid] = net
-      kcp.Send(ConnectSuccess.create(userInfo, data.uuid).bytes)
+      kcp.Send(ConnectSuccess.create(key, data.uuid).bytes)
     }
   }
 
   private fun clientRawHandler( data: RawData) {
     conMap[data.uuid]?.write(data.data) ?: let {
-      kcp.Send(co.zzyun.wsocks.data.Exception.create(userInfo, data.uuid, "Remote socket has closed").bytes)
+      kcp.Send(co.zzyun.wsocks.data.Exception.create(key, data.uuid, "Remote socket has closed").bytes)
     }
   }
 
@@ -114,7 +126,7 @@ class TransportUnit(val kcp:KCP,private val userInfo:UserInfo,private val maxWai
       }
       it.complete(address)
     }) {
-      kcp.Send(DnsQuery.create(userInfo, data.uuid, it.result()).bytes)
+      kcp.Send(DnsQuery.create(key, data.uuid, it.result()).bytes)
     }
   }
 }

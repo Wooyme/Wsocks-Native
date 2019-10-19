@@ -29,34 +29,6 @@ object PcapUtil {
     nif = Pcaps.findAllDevs()[0]
     println(nif.name)
     PcapUtil.sendHandle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
-    //enableSniffer()
-  }
-
-  private fun enableSniffer(){
-    val handle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
-    val listener = PacketListener {
-      val ethernetPacket = EthernetPacket.newPacket(it.rawData, 0, it.length())
-      if(ethernetPacket.header.type== EtherType.IPV4) {
-        try {
-          val ipPacket = ethernetPacket.get(IpV4Packet::class.java)
-          if(System.getProperty("sniffer.debug")?.toBoolean()==true)
-            println("[Sniffer][${ethernetPacket.header.type.name()}] SrcMac:${ethernetPacket.header.srcAddr} DstMac:${ethernetPacket.header.dstAddr} SrcIp:${ipPacket.header.srcAddr} DstIp:${ipPacket.header.dstAddr}")
-          if(ipPacket.header.protocol == IpNumber.UDP){
-            val udpPacket = ipPacket.get(UdpPacket::class.java)
-
-          }
-        }catch (e:Throwable){
-          e.printStackTrace()
-        }
-      }
-    }
-    Thread {
-      try {
-        handle.loop(-1, listener)
-      }catch (e:Throwable){
-        e.printStackTrace()
-      }
-    }.start()
   }
 
   fun sendUdp(srcIpAddress: InetAddress, dstIpAddress: InetAddress, srcPort: Short, dstPort: Short, rawData: ByteArray) {

@@ -29,6 +29,7 @@ $SVMBUILD/bin/native-image \
 --report-unsupported-elements-at-runtime \
 --enable-all-security-services \
 --allow-incomplete-classpath \
+-H:EnableURLProtocols=http \
 -H:ReflectionConfigurationFiles=netty.json \
 -H:+ReportExceptionStackTraces \
 -Dprism.verbose=true \

@@ -29,9 +29,9 @@ $SVMBUILD/bin/native-image \
 --report-unsupported-elements-at-runtime \
 --enable-all-security-services \
 --allow-incomplete-classpath \
+-H:EnableURLProtocols=http \
 -H:ReflectionConfigurationFiles=netty.json \
 -H:+ReportExceptionStackTraces \
--Dprism.verbose=true \
 -cp $CLASSPATH \
 -jar target/wsocks-1.0.0-SNAPSHOT.jar \
 -H:Name=wsocks \

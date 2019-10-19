@@ -5,8 +5,10 @@
     "udp": 1890,
     "maxWaitSnd":8000,
     "WndSize": 256,
-    "mtu": 1400,
-    "host":"192.168.1.104",
+    "mtu": 1200,
+    "host":"192.168.1.100",
+    "slave":"urmyslave",
+    "center":"http://192.168.1.100:7771",
     "users":[
         {
             "user":"wooyme",

@@ -13,8 +13,11 @@ import org.pcap4j.packet.namednumber.IpVersion
 import org.pcap4j.packet.namednumber.UdpPort
 import org.pcap4j.util.IpV4Helper
 import java.net.Inet4Address
+import java.net.InetAddress
+import java.util.*
 
-class PcapUdp:AbstractServer() {
+class PcapUdp:BaseServer() {
+
   companion object {
       private val debug = System.getProperty("pcap.debug")?.toBoolean()?:false
   }
@@ -99,5 +102,9 @@ class PcapUdp:AbstractServer() {
 
   private fun fakeMac(){
     PcapUtil.sendHandle.sendPacket(fakePacket)
+  }
+
+  override fun send(srcIp: InetAddress, dstIp: InetAddress, srcPort: Short, dstPort: Short, buffer: ByteArray, size: Int) {
+    PcapUtil.sendUdp(srcIp,dstIp,srcPort,dstPort, Arrays.copyOfRange(buffer,0,size))
   }
 }
