@@ -1,4 +1,5 @@
 {
+    "name":"zz1-LA",
     "lowendbox":true,
     "server":"udp",
     "http":1889,
@@ -6,13 +7,7 @@
     "maxWaitSnd":8000,
     "WndSize": 256,
     "mtu": 1200,
-    "host":"192.168.1.100",
+    "host":"107.172.122.191",
     "slave":"urmyslave",
-    "center":"http://192.168.1.100:7771",
-    "users":[
-        {
-            "user":"wooyme",
-            "pass":"11241124"
-        }
-    ]
+    "center":"http://107.173.11.140:7771"
 }

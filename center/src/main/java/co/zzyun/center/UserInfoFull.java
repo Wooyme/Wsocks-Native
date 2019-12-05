@@ -43,7 +43,6 @@ public class UserInfoFull {
       .put("user",info.getUsername())
       .put("pass",info.getPassword())
       .put("multiple",info.getMaxLoginDevices())
-      .put("connect",tokens.size())
       .put("usage",usage.get())
       .put("limit",info.getLimitation())
       .toString();

@@ -1,6 +1,5 @@
 package co.zzyun.wsocks
 
-import org.pcap4j.core.PacketListener
 import org.pcap4j.core.PcapHandle
 import org.pcap4j.core.PcapNetworkInterface
 import org.pcap4j.core.Pcaps
@@ -11,7 +10,6 @@ import org.pcap4j.packet.namednumber.IpVersion
 import org.pcap4j.packet.namednumber.UdpPort
 import org.pcap4j.util.IpV4Helper
 import org.pcap4j.util.MacAddress
-import org.pcap4j.util.NifSelector
 import java.net.Inet4Address
 import java.net.InetAddress
 
@@ -31,15 +29,15 @@ object PcapUtil {
     PcapUtil.sendHandle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
   }
 
-  fun sendUdp(srcIpAddress: InetAddress, dstIpAddress: InetAddress, srcPort: Short, dstPort: Short, rawData: ByteArray) {
+  fun sendUdp(srcIpAddress: InetAddress, dstIpAddress: InetAddress, srcPort: Int, dstPort: Int, rawData: ByteArray) {
     if(debug){
       println("SendUdp: DataLen ${rawData.size}")
     }
     val udpBuilder = UdpPacket.Builder()
     udpBuilder.srcAddr(srcIpAddress)
       .dstAddr(dstIpAddress)
-      .srcPort(UdpPort(srcPort, "me"))
-      .dstPort(UdpPort(dstPort, "me"))
+      .srcPort(UdpPort(srcPort.toShort(), "me"))
+      .dstPort(UdpPort(dstPort.toShort(), "me"))
       .payloadBuilder(UnknownPacket.Builder().rawData(rawData))
       .correctLengthAtBuild(true)
       .correctChecksumAtBuild(true)

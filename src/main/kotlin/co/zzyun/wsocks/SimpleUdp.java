@@ -1,7 +1,6 @@
 package co.zzyun.wsocks;
 
 import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
 
 import java.io.IOException;
 import java.net.DatagramPacket;

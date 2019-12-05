@@ -26,24 +26,28 @@ class BaseClient : AbstractVerticle() {
   private val eventBus by lazy { vertx.eventBus() }
   private lateinit var netServer: NetServer
   private val connectMap = HashMap<String, NetSocket>()
-  protected var remotePort: Int = 0
+  private var remotePort: Int = 0
   private val centerHost by lazy { config().getString("center.host") }
   private val centerPort by lazy { config().getInteger("center.port") }
-  protected lateinit var remoteHost: String
-  protected var xSrcPort: Int = 0
-  protected lateinit var xSrcHost: String
+  private lateinit var remoteHost: String
+  private var xSrcPort: Int = 0
+  private lateinit var xSrcHost: String
   private val userInfo: UserInfo by lazy { UserInfo.fromJson(config().getJsonObject("user.info")) }
 
-  protected val udpServer by lazy { SimpleUdp(1079) }
+  private val udpServer by lazy { SimpleUdp(1079) }
   private lateinit var myToken: String
-  protected val httpClient: HttpClient by lazy { vertx.createHttpClient(HttpClientOptions().setMaxPoolSize(1).setKeepAlive(true)) }
+  private val httpClient: HttpClient by lazy { vertx.createHttpClient(HttpClientOptions().setMaxPoolSize(1).setKeepAlive(true)) }
   lateinit var kcp: KCP
 
   private fun KCP.input(buffer: Buffer) = eventBus.send("kcp-input", buffer)
 
   private fun isKcpInitialized() = this::kcp.isInitialized
   private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
+  private var lastAccessTs = 0L
+  private var heartTimerID = 0L
   private var timerID = 0L
+  private var isOffline = true
+
   override fun start(future: Future<Void>) {
     val data = ByteArray(8 * 1024 * 1024)
     this.timerID = vertx.setPeriodic(10) {
@@ -59,7 +63,6 @@ class BaseClient : AbstractVerticle() {
       kcp.Input(it.body().bytes)
     }
     vertx.eventBus().consumer<JsonObject>("client-connect"){ msg->
-
       this.remoteHost = msg.body().getString("host")
       this.remotePort = msg.body().getInteger("port")
       httpClient.get(remotePort, remoteHost, "/login?token=$myToken") {
@@ -69,10 +72,15 @@ class BaseClient : AbstractVerticle() {
         udpServer.send(it.headers()["x-src-port"].toInt(), InetAddress.getByName(it.headers()["x-src-host"]), Buffer.buffer("go"))
         val conv = it.headers()["x-conv"].toLong()
         initKcp(conv)
+        this.isOffline = false
         msg.reply("OK")
       }.exceptionHandler {
         msg.fail(499,it.localizedMessage)
       }.end()
+    }
+    vertx.eventBus().consumer<Any>("status"){ msg->
+      if(this.isOffline) msg.reply("")
+      else msg.reply("OK")
     }
     preLogin(future)
     initSocksServer()
@@ -89,21 +97,24 @@ class BaseClient : AbstractVerticle() {
     kcp.SetMtu(1200)
     kcp.WndSize(256, 256)
     kcp.NoDelay(1, 10, 2, 1)
-    vertx.setPeriodic(30*10000){
+    this.heartTimerID = vertx.setPeriodic(60*1000){
+      //5分钟未收到任何数据则关闭client
+      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60*5){
+        this.offline()
+      }
       kcp.Send(heart)
     }
   }
 
   override fun stop() {
     println("Stopping client...")
+    offline()
     httpClient.close()
     udpServer.close()
-    netServer.close()
     connectMap.clear()
-    vertx.cancelTimer(timerID)
-    if (this::kcp.isInitialized) kcp.clean()
     super.stop()
   }
+
 
   private fun preLogin(msg: Future<Void>) {
     var loginTimerId = 0L
@@ -129,6 +140,7 @@ class BaseClient : AbstractVerticle() {
         } catch (e: Throwable) {
           return@handler msg.fail(e.localizedMessage)
         }
+        msg.complete()
       } else {
         if (!isKcpInitialized()) return@handler
         kcp.input(Buffer.buffer().appendBytes(it.data, it.offset, it.length))
@@ -139,24 +151,33 @@ class BaseClient : AbstractVerticle() {
     }
   }
 
-
-
   private fun handle(buffer: Buffer) {
     if (buffer.length() < 4) return
     when (buffer.getIntLE(0)) {
       Flag.CONNECT_SUCCESS.ordinal -> connectedHandler(ConnectSuccess(userInfo.key, buffer).uuid)
       Flag.EXCEPTION.ordinal -> exceptionHandler(Exception(userInfo.key, buffer))
       Flag.RAW.ordinal -> receivedRawHandler(RawData(userInfo.key, buffer))
+      Flag.HEART.ordinal->{
+        this.lastAccessTs = Date().time
+      }
       else -> {
         println("Invalid:${buffer.getIntLE(0)}")
       }
     }
   }
 
+  private fun offline(){
+    println("-----------------Offline-----------------")
+    vertx.cancelTimer(timerID)
+    vertx.cancelTimer(heartTimerID)
+    if (this::kcp.isInitialized) kcp.clean()
+    this.netServer.close()
+  }
+
   private fun initSocksServer() {
     println("Init socks server")
     if (this::netServer.isInitialized) {
-      this.netServer.close()
+      try { this.netServer.close() }catch(ignored:Throwable){}
     }
     println("Create socks server")
     this.netServer = vertx.createNetServer().connectHandler { socket ->

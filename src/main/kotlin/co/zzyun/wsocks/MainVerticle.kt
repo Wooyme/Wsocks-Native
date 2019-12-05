@@ -1,7 +1,7 @@
 package co.zzyun.wsocks
 
-import co.zzyun.wsocks.server.FullUdp
-import co.zzyun.wsocks.server.PcapUdp
+import co.zzyun.wsocks.server.receiver.TcpRecv
+import co.zzyun.wsocks.server.receiver.WebSocketRecv
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
@@ -13,14 +13,11 @@ val unitMap = HashMap<Long, TransportUnit>()
 
 fun main(args: Array<String>) {
   System.setProperty("io.netty.noUnsafe","true")
-  //System.loadLibrary("Udp")
   val serverConfig = JsonObject(File(args[0]).readText())
   val serverImpl = when(serverConfig.getString("server")){
-    "pcap"->{
-      PcapUtil.initPcap(System.getProperty("mac.src"),System.getProperty("mac.gateway"))
-      PcapUdp()
-    }
-    else -> FullUdp()
+    "websocket"->WebSocketRecv()
+    "tcp" -> TcpRecv()
+    else-> WebSocketRecv()
   }
   val vertxOptions = VertxOptions()
   if(serverConfig.getBoolean("lowendbox")){

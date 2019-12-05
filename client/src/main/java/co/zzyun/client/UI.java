@@ -22,7 +22,6 @@ public class UI extends Application {
   public static void main(String[] args) {
     String pwd = System.getProperty("user.dir");
     System.setProperty("java.library.path", "libs");
-
     //System.setProperty("prism.order", "sw");
     //System.setProperty("prism.text", "t2k");
     System.setProperty("prism.nativepisces", "false");
@@ -82,6 +81,8 @@ public class UI extends Application {
           primaryStage.setTitle("连接成功");
         } else if (con.getResponseCode() == 201) {
           primaryStage.setTitle("等待...");
+        }else if(con.getResponseCode() == 202){
+          primaryStage.setTitle("连接断开");
         } else {
           primaryStage.setTitle("失败:" + con.getResponseMessage().substring(0, 6));
         }

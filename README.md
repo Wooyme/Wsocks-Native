@@ -15,41 +15,52 @@ Different from the kotlin native version. This version rely on Graalvm to build 
 启动非常简单  
 java
 ```
-java -jar center-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+java -jar center-1.0.0-SNAPSHOT-jar-with-dependencies.jar [udp端口] [http端口] [管理员密码] [代理接入密码] [salt]
 ```
 native
 ```
-./center
+./center [udp端口] [http端口] [管理员密码] [代理接入密码] [salt]
 ```
 
 服务端
 ---
-**需要root**  
+**启动PCAP需要root**  
 java
 ```
-sudo java -Xmx256m -Djava.library.path=. -jar wsocks-1.0.0-SNAPSHOT-jar-with-dependencies.jar config.json
+sudo java -Xmx256m -jar wsocks-1.0.0-SNAPSHOT-jar-with-dependencies.jar config.json
 ```
 native
 ```
-sudo ./wsocks config.json -Djava.library.path=. -Xmx128m
+sudo ./wsocks config.json -Xmx128m
 ```
 配置文件config.json
 ```
 {
     "lowendbox":是否为低性能机器,
-    "server":"接收服务http|websocket|udp",
+    "server":"接收服务udp|pcap",
     "http":http端口号,
     "udp": udp端口号,
     "maxWaitSnd":8000,
     "WndSize": 256或128,
     "mtu": 1400,
     "host":"你的ip，或者别人的ip",
-    "users":[
-        {
-            "user":"用户名",
-            "pass":"密码"
-        }
-    ]
+    "slave":"代理接入秘钥",
+    "center":"中心url",
+}
+```
+例如：
+```
+{
+    "lowendbox":true,
+    "server":"udp",
+    "http":1889,
+    "udp": 1890,
+    "maxWaitSnd":8000,
+    "WndSize": 256,
+    "mtu": 1200,
+    "host":"192.168.1.100",
+    "slave":"urmyslave",
+    "center":"http://192.168.1.100:7771"
 }
 ```
 稍微解释一下。首先是`lowendbox`，如果你的内存非常小，在256M以内，那么推荐设成`true`  
@@ -67,19 +78,9 @@ sudo ./wsocks config.json -Djava.library.path=. -Xmx128m
 ----
 客户端其实有两个部分，一个是ui，一个是core。两者之间是通过http通信的，实际上不开ui的部分完全是可以的。
 
-### core
-java
+需要环境变量
 ```
-java -Dwsocks.client=http|websocket|udp -Dcenter.host=中心地址 -Dcenter.port=中心端口 -jar client-core-1.0-SNAPSHOT-jar-with-dependencies.jar
-```
-native
-```
-./client-core -Dwsocks.client=http|websocket|udp -Dcenter.host=中心地址 -Dcenter.port=中心端口
-```
-跟服务端一样，也分为http|websocket|udp三种。核心启动之后会监听1078端口  
-可以通过访问如下地址来连接到服务端
-```
-http://localhost:1078/index?user=用户名&pass=密码&host=远程地址&port=远程端口
+-Dcenter_url=[中心url] -Dcenter_host=[中心地址] -Dcenter_port=[中心端口] -Dsalt=[salt] -Dversion=[version]
 ```
 
 其他

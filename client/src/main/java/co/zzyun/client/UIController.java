@@ -134,6 +134,7 @@ public class UIController {
         con.disconnect();
 
       } catch (IOException ignored) {
+        ignored.printStackTrace();
       }
 
     }).start();

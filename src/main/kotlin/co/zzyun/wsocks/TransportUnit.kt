@@ -13,6 +13,7 @@ import kotlin.collections.HashMap
 class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd:Int,private val token:String,private val httpClient:HttpClient,private val centerUrl:String):AbstractVerticle() {
   companion object {
       private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
+      private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
   }
   private val netClient by lazy { vertx.createNetClient() }
   private val conMap = HashMap<String,NetSocket>()
@@ -21,6 +22,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
   private var updateTimerID:Long = 0L
   private var lastAccessTs = 0L
   private var usage = 0L
+  private var onStop:(()->Any)?=null
   override fun start() {
     super.start()
     val data = ByteArray(8 * 1024 * 1024)
@@ -39,7 +41,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
       }
     }
     this.heartTimerID = vertx.setPeriodic(5*10*1000){
-      //3分钟未收到任何数据则关闭这个单元
+      //5分钟未收到任何数据则关闭这个单元
       if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60*5){
         this.stop()
       }
@@ -62,19 +64,26 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
     kcp.clean()
     this.httpClient.getAbs("$centerUrl/offline?token=$token"){}.end()
     this.httpClient.getAbs("$centerUrl/update?token=$token&usage=$usage"){}.end()
+    this.onStop?.invoke()
+  }
+
+  fun setOnStop(onStop:()->Any){
+    this.onStop = onStop
   }
 
   private fun handle(buffer:Buffer){
-    this.lastAccessTs = Date().time
+
     when (buffer.getIntLE(0)) {
       Flag.CONNECT.ordinal -> clientConnectHandler(ClientConnect(key, buffer))
       Flag.RAW.ordinal -> {
-        usage+=buffer.length()
         clientRawHandler(RawData(key, buffer))
       }
       Flag.DNS.ordinal -> clientDNSHandler(DnsQuery(key, buffer))
       Flag.EXCEPTION.ordinal -> clientExceptionHandler(co.zzyun.wsocks.data.Exception(key, buffer))
-      Flag.HEART.ordinal->{} // 啥也不用干
+      Flag.HEART.ordinal->{
+        this.lastAccessTs = Date().time
+        kcp.Send(heart)
+      } // 返回一个heart
       else -> println(buffer.getIntLE(0))
     }
   }
@@ -94,6 +103,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
           }
         }
         if(kcp.WaitSnd()>maxWaitSnd) wait()
+        usage+=buffer.length()
         kcp.Send(RawData.create(key, data.uuid, buffer).bytes)
       }.closeHandler {
         conMap.remove(data.uuid)

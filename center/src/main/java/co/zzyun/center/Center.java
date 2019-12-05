@@ -103,6 +103,15 @@ public class Center {
           if (!req.getParam("slave").equals(args[3])) {
             req.response().end();
           } else {
+            String type = req.getParam("type");
+            for (Slave host : hosts) {
+              if (host.getType().equals(type)) {
+                host.setHost(req.remoteAddress().host());
+                host.setPort(Integer.valueOf(req.getParam("port")));
+                req.response().end();
+                return;
+              }
+            }
             hosts.add(new Slave(req.remoteAddress().host(), Integer.valueOf(req.getParam("port")), req.getParam("type")));
             req.response().end();
           }
@@ -134,7 +143,7 @@ public class Center {
           if (user != null) {
             user.addUsage(usage);
             try {
-              PrintWriter out = new PrintWriter(Paths.get(userPath, user.getInfo().getUsername()).toUri().toString());
+              PrintWriter out = new PrintWriter(Paths.get(userPath, user.getInfo().getUsername()).toString());
               out.println(user.toString());
               out.close();
             } catch (FileNotFoundException e) {
@@ -203,6 +212,5 @@ public class Center {
         out.close();
       }
     }
-
   }
 }
