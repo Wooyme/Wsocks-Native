@@ -34,7 +34,7 @@ class BaseClient : AbstractVerticle() {
   private lateinit var xSrcHost: String
   private val userInfo: UserInfo by lazy { UserInfo.fromJson(config().getJsonObject("user.info")) }
 
-  private val udpServer by lazy { SimpleUdp(1079) }
+  private val udpServer by lazy { vertx.createDatagramSocket() }
   private lateinit var myToken: String
   private val httpClient: HttpClient by lazy { vertx.createHttpClient(HttpClientOptions().setMaxPoolSize(1).setKeepAlive(true)) }
   lateinit var kcp: KCP
@@ -69,7 +69,7 @@ class BaseClient : AbstractVerticle() {
         if (it.statusCode() != 200) return@get msg.fail(it.statusCode(),it.statusMessage())
         xSrcHost = it.headers()["x-src-host"]
         xSrcPort = it.headers()["x-src-port"].toInt()
-        udpServer.send(it.headers()["x-src-port"].toInt(), InetAddress.getByName(it.headers()["x-src-host"]), Buffer.buffer("go"))
+        udpServer.send(Buffer.buffer("go"),it.headers()["x-src-port"].toInt(),it.headers()["x-src-host"]){}
         val conv = it.headers()["x-conv"].toLong()
         initKcp(conv)
         this.isOffline = false
@@ -84,14 +84,14 @@ class BaseClient : AbstractVerticle() {
     }
     preLogin(future)
     initSocksServer()
-    udpServer.start()
+    udpServer.listen(1079,"0.0.0.0"){}
   }
 
   private fun initKcp(conv: Long) {
     val inet = InetAddress.getByName(xSrcHost)
     kcp = object : KCP(conv) {
       override fun output(buffer: ByteArray, size: Int) {
-        udpServer.send(xSrcPort, inet, Buffer.buffer().appendBytes(buffer, 0, size))
+        udpServer.send(Buffer.buffer().appendBytes(buffer, 0, size),xSrcPort, inet.hostAddress){}
       }
     }
     kcp.SetMtu(1200)
@@ -119,10 +119,9 @@ class BaseClient : AbstractVerticle() {
   private fun preLogin(msg: Future<Void>) {
     var loginTimerId = 0L
     this.udpServer.handler {
-      println("DS:${it.length}")
-      if (it.port == centerPort) {
+      if (it.sender().port() == centerPort) {
         if (this::myToken.isInitialized) return@handler
-        val buffer = Buffer.buffer().appendBytes(it.data, it.offset, it.length)
+        val buffer = it.data()
         vertx.cancelTimer(loginTimerId)
         val status = try {
           buffer.toJsonObject().getInteger("status")
@@ -143,11 +142,11 @@ class BaseClient : AbstractVerticle() {
         msg.complete()
       } else {
         if (!isKcpInitialized()) return@handler
-        kcp.input(Buffer.buffer().appendBytes(it.data, it.offset, it.length))
+        kcp.input(it.data())
       }
     }
     loginTimerId = vertx.setPeriodic(1000) {
-      this.udpServer.send(centerPort, InetAddress.getByName(centerHost), JsonObject().put("user", userInfo.username).put("pass", userInfo.password).toBuffer())
+      this.udpServer.send(JsonObject().put("user", userInfo.username).put("pass", userInfo.password).toBuffer(),centerPort, InetAddress.getByName(centerHost).hostAddress){}
     }
   }
 

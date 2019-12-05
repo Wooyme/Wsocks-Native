@@ -34,7 +34,6 @@ public class SimpleUdp extends Thread {
       } catch (IOException e) {
         e.printStackTrace();
       }
-
       handler.handle(packet);
     }
     socket.close();
