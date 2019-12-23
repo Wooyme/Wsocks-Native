@@ -494,7 +494,7 @@ public abstract class KCP {
     }
 
     public void InputAsync(Buffer buf){
-      eventBus.send("unit-"+conv,buffer);
+      eventBus.send("unit-"+conv,buf);
     }
 
     // when you received a low level packet (eg. UDP packet), call it

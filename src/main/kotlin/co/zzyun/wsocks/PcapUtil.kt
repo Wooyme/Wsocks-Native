@@ -17,16 +17,16 @@ object PcapUtil {
 
   private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
   private const val MTU = 1400
-  lateinit var srcMacAddress: MacAddress
-  lateinit var gatewayMacAddress: MacAddress
-  lateinit var nif: PcapNetworkInterface
+  private lateinit var srcMacAddress: MacAddress
+  private lateinit var gatewayMacAddress: MacAddress
+  private lateinit var nif: PcapNetworkInterface
   lateinit var sendHandle: PcapHandle
   fun initPcap(srcMacAddress: String, gatewayMacAddress: String) {
     PcapUtil.srcMacAddress = MacAddress.getByName(srcMacAddress, ":")
     PcapUtil.gatewayMacAddress = MacAddress.getByName(gatewayMacAddress, ":")
     nif = Pcaps.findAllDevs()[0]
     println(nif.name)
-    PcapUtil.sendHandle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
+    sendHandle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10)
   }
 
   fun sendUdp(srcIpAddress: InetAddress, dstIpAddress: InetAddress, srcPort: Int, dstPort: Int, rawData: ByteArray) {

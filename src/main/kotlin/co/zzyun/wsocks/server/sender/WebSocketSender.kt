@@ -7,11 +7,15 @@ import io.vertx.core.net.SocketAddress
 class WebSocketSender:ISender {
   override fun send(conn: Any?, address: SocketAddress?, buffer: ByteArray, size: Int) {
     if(conn !is ServerWebSocket) throw RuntimeException("Need ServerWebSocket when using WebSocketSender")
-    conn.writeBinaryMessage(Buffer.buffer().appendBytes(buffer,0,size))
+    try {
+      conn.writeBinaryMessage(Buffer.buffer().appendBytes(buffer, 0, size))
+    }catch(ignored:Throwable){ }
   }
 
   override fun close(conn: Any?, address: SocketAddress?) {
     if(conn !is ServerWebSocket) throw RuntimeException("Need ServerWebSocket when using WebSocketSender")
-    conn.close()
+    try {
+      conn.close()
+    }catch (ignored:Throwable){}
   }
 }

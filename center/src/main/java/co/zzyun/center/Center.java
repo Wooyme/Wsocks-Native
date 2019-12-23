@@ -4,8 +4,8 @@ import co.zzyun.wsocks.data.Slave;
 import co.zzyun.wsocks.data.UserInfo;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.FileSystemOptions;
+import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.codec.binary.Base64;
@@ -17,15 +17,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Scanner;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Center {
-  private static HashMap<String, UserInfoFull> userMap = new HashMap<>(); // username, UserInfoFull
-  private static HashMap<String, UserInfoFull> tokenMap = new HashMap<>(); // token, UserInfoFull
-  private static LinkedList<Slave> hosts = new LinkedList<>();
+  private static Map<String, UserInfoFull> userMap = new ConcurrentHashMap<>(); // username, UserInfoFull
+  private static Map<String, UserInfoFull> tokenMap = new ConcurrentHashMap<>(); // token, UserInfoFull
+  private static Set<Slave> hosts = new ConcurrentHashSet<>();
   private static String userPath = "users";
 
   /*args: [0]-udp端口 [1]-http端口 [2]-god秘钥 [3]-slave秘钥 [4]-salt*/
@@ -36,31 +34,7 @@ public class Center {
     server.handler(p -> {
       String host = p.getAddress().getHostAddress();
       int port = p.getPort();
-      JsonObject json = Buffer.buffer(p.getData()).toJsonObject();
-      UserInfoFull user = userMap.get(json.getString("user"));
-      if (user == null) {
-        try {
-          user = new UserInfoFull(new JsonObject(new Scanner(Paths.get(userPath, json.getString("user")).toFile()).useDelimiter("\\Z").next()));
-          userMap.put(user.getInfo().getUsername(), user);
-        } catch (FileNotFoundException e) {
-          server.send(port, p.getAddress(), new JsonObject().put("status", -1).toBuffer());
-          return;
-        }
-      }
-      if (!user.getInfo().getPassword().equals(json.getString("pass"))) {
-        server.send(port, p.getAddress(), new JsonObject().put("status", -1).toBuffer());
-        return;
-      }
-      if (user.getInfo().getMaxLoginDevices() != -1 && user.getTokens().size() > user.getInfo().getMaxLoginDevices()) {
-        server.send(port, p.getAddress(), new JsonObject().put("status", -2).toBuffer());
-        return;
-      }
-      String token = RandomStringUtils.randomAlphanumeric(16);
-      tokenMap.put(token, user);
-      user.getTokens().put(token, new ConnectInfo(host, port));
-      server.send(port, p.getAddress(), new JsonObject()
-        .put("status", 1)
-        .put("token", token)
+      server.send(port, p.getAddress(), new JsonObject().put("port",port).put("host",host)
         .toBuffer());
     });
     server.start();
@@ -69,73 +43,102 @@ public class Center {
         .setFileCachingEnabled(false)
         .setClassPathResolvingEnabled(false))
         .setWorkerPoolSize(1).setEventLoopPoolSize(1).setInternalBlockingPoolSize(1));
+    vertx.setPeriodic(60*1000,id-> {
+      List<String> list = new LinkedList<>();
+      tokenMap.forEach((k, v)->{
+        if(v.getConnections()==0){
+          list.add(k);
+        }
+      });
+      list.forEach(v->tokenMap.remove(v));
+      }
+    );
     vertx.createHttpServer().requestHandler(req -> {
-      System.out.println("[Req]:" + req.path() + req.query());
+      System.out.println("[Req]:" + req.path()+"?" + req.query());
       switch (req.path()) {
+        // login?user=&pass=
+        case "/login":{
+          UserInfoFull user = userMap.get(req.getParam("user"));
+          if (user == null) {
+            try {
+              user = new UserInfoFull(new JsonObject(new Scanner(Paths.get(userPath, req.getParam("user")).toFile()).useDelimiter("\\Z").next()));
+              userMap.put(user.getInfo().getUsername(), user);
+            } catch (FileNotFoundException e) {
+              req.response().setStatusCode(500).setStatusMessage("No such user").end();
+              return;
+            }
+          }
+          if (!user.getInfo().getPassword().equals(req.getParam("pass"))) {
+            req.response().setStatusCode(501).setStatusMessage("Password wrong").end();
+            return;
+          }
+          if(user.getToken()==null){
+            String token = RandomStringUtils.randomAlphanumeric(16);
+            tokenMap.put(token, user);
+            user.setToken(token);
+          }
+          req.response().putHeader("x-token",user.getToken()).putHeader("x-salt",args[4]);
+          int i =0;
+          for (Slave host : hosts) {
+            req.response().putHeader("x-host" + i, host.toString());
+            i++;
+          }
+          System.out.println("Client["+user.getToken()+"] login");
+          req.response().end();
+        }
+        break;
+        // hosts?god=
         case "/hosts": {
           if (args[2].equals(req.getParam("god"))) {
-            for (int i = 0; i < hosts.size(); i++) {
-              String host = hosts.get(i).getHost() + "+" + hosts.get(i).getPort() + "+" + hosts.get(i).getType();
-              req.response().putHeader("x-host" + i, host);
+            int i =0;
+            for (Slave host : hosts) {
+              String hostStr = host.getHost() + "+" + host.getPort();
+              req.response().putHeader("x-host" + i, hostStr);
+              i++;
             }
             req.response().end();
             return;
-          }
-          String timestamp = req.getParam("t");
-          String version = req.getParam("v");
-          String secret = req.getParam("s");
-          String salt = args[4];
-          if (new Date().getTime() - Long.valueOf(timestamp) > 10 * 1000) {
+          }else{
             req.response().setStatusCode(500).end();
-            return;
-          }
-          if (secret.equals(DigestUtils.md5Hex(timestamp + version + salt))) {
-            for (int i = 0; i < hosts.size(); i++) {
-              String host = hosts.get(i).getHost() + "+" + hosts.get(i).getPort() + "+" + hosts.get(i).getType();
-              req.response().putHeader("x-host" + i, host);
-            }
-            req.response().end();
-            return;
           }
         }
         break;
+        // slave?slave=&name=&port=
         case "/slave": {
           if (!req.getParam("slave").equals(args[3])) {
             req.response().end();
           } else {
-            String type = req.getParam("type");
-            for (Slave host : hosts) {
-              if (host.getType().equals(type)) {
-                host.setHost(req.remoteAddress().host());
-                host.setPort(Integer.valueOf(req.getParam("port")));
-                req.response().end();
-                return;
-              }
-            }
-            hosts.add(new Slave(req.remoteAddress().host(), Integer.valueOf(req.getParam("port")), req.getParam("type")));
+            hosts.add(new Slave(req.remoteAddress().host(), Integer.valueOf(req.getParam("port")),req.getParam("name")));
             req.response().end();
           }
         }
         break;
+        // online?token=&host=&name=
         case "/online": {
           if (tokenMap.containsKey(req.getParam("token"))) {
-            UserInfo uInfo = tokenMap.get(req.getParam("token")).getInfo();
-            ConnectInfo cInfo = tokenMap.get(req.getParam("token")).getTokens().get(req.getParam("token"));
-            req.response().putHeader("x-ip", cInfo.getIp())
-              .putHeader("x-port", String.valueOf(cInfo.getPort()))
-              .putHeader("x-key", Base64.encodeBase64String(uInfo.getKey()).replace("\r","").replace("\n",""))
+            UserInfoFull uInfo = tokenMap.get(req.getParam("token"));
+            uInfo.addConnection(req.getParam("host"),req.getParam("name"));
+            req.response()
+              .putHeader("x-key", Base64.encodeBase64String(uInfo.getInfo().getKey()).replace("\r","").replace("\n",""))
               .end();
           } else {
             req.response().setStatusCode(500).end();
           }
         }
         break;
+        // offline?token=
         case "/offline": {
           String token = req.getParam("token");
-          tokenMap.remove(token).getTokens().remove(token);
+          if(tokenMap.containsKey(token)) {
+            tokenMap.get(token).removeConnection(req.getParam("host"), req.getParam("name"));
+            System.out.println("["+req.getParam("host")+"]:与 "+req.getParam("name")+" 断开连接");
+          }else{
+            System.out.println("["+req.getParam("host")+"] 未登录");
+          }
           req.response().end();
         }
         break;
+        // update?token=&usage=
         case "/update": {
           String token = req.getParam("token");
           int usage = Integer.valueOf(req.getParam("usage"));
@@ -174,6 +177,11 @@ public class Center {
           } catch (IOException e) {
             e.printStackTrace();
           }
+        }
+        break;
+        default:
+        {
+          req.response().setStatusCode(404).setStatusMessage("Not found").end();
         }
         break;
       }

@@ -7,7 +7,13 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.file.FileSystemOptions;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.io.IOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 
 
 public class Client {
@@ -23,7 +29,15 @@ public class Client {
       .setFileSystemOptions(new FileSystemOptions()
         .setFileCachingEnabled(false)
         .setClassPathResolvingEnabled(false)));
-    EventBus eventBus = vertx.eventBus();
+    final EventBus eventBus = vertx.eventBus();
+    final String index;
+    try {
+      InputStream is = Client.class.getResourceAsStream("/index.html");
+      index = IOUtils.toString(is, Charset.defaultCharset());
+    } catch (IOException e) {
+      e.printStackTrace();
+      return;
+    }
     vertx.createHttpServer().requestHandler(req -> {
       switch (req.path()) {
         case "/start": {
@@ -40,19 +54,21 @@ public class Client {
             .put("center.port", Integer.valueOf(centerPort))
             .put("user.info", new JsonObject().put("user", user).put("pass", pass))), result -> {
             if (result.failed())
-              req.response().setStatusCode(500).setStatusMessage(result.cause().getLocalizedMessage()).end();
+              req.response().end(result.cause().getMessage());
             else {
               deployId = result.result();
-              req.response().setStatusCode(200).end();
+              req.response().end();
             }
           });
         }
         break;
         case "/connect": {
-          vertx.eventBus().send("client-connect", new JsonObject().put("host", req.getParam("host"))
-            .put("port", Integer.valueOf(req.getParam("port"))), new DeliveryOptions().setSendTimeout(120 * 1000), (r) -> {
+          vertx.eventBus().send("client-connect", new JsonObject()
+            .put("host", req.getParam("host"))
+            .put("port", Integer.valueOf(req.getParam("port")))
+            .put("type",req.getParam("type")), new DeliveryOptions().setSendTimeout(120 * 1000), (r) -> {
             if (r.failed()) {
-              req.response().setStatusCode(500).setStatusMessage(r.cause().getLocalizedMessage()).end();
+              req.response().end(r.cause().getMessage());
             } else {
               req.response().end();
             }
@@ -61,21 +77,23 @@ public class Client {
         break;
         case "/status": {
           if (deployId.isEmpty()) {
-            req.response().setStatusCode(201).end();
-            return;
+            req.response().end("客户端未连接");
+          }else {
+            eventBus.send("status", null, new DeliveryOptions().setSendTimeout(120 * 1000), event -> req.response().setStatusCode(200).end((String) event.result().body()));
           }
-          eventBus.send("status", null, new DeliveryOptions().setSendTimeout(120 * 1000), event -> {
-            if (event.failed())
-              req.response().setStatusCode(500).setStatusMessage(event.cause().getLocalizedMessage()).end();
-            else {
-              if (((String) event.result().body()).isEmpty())
-                req.response().setStatusCode(202).end();
-              else
-                req.response().setStatusCode(200).end();
-            }
-          });
         }
         break;
+        case "/hosts":{
+          if (deployId.isEmpty()) {
+            req.response().end();
+          }else {
+            eventBus.send("hosts", null, new DeliveryOptions().setSendTimeout(120 * 1000), event -> req.response().setStatusCode(200).end(((JsonArray) event.result().body()).toBuffer()));
+          }
+        }
+        break;
+        default:{
+          req.response().end(index);
+        }
       }
     }).listen(1078, r -> {
       if (r.failed()) r.cause().printStackTrace();

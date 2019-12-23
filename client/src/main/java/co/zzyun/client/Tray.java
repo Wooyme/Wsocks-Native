@@ -1,35 +1,45 @@
 package co.zzyun.client;
 
+import dorkbox.systemTray.Menu;
+import dorkbox.systemTray.MenuItem;
+import dorkbox.systemTray.SystemTray;
 
 import java.awt.*;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 class Tray {
-  private static URL LT_GRAY_TRAIN = Tray.class.getResource("/icon/icon.jpg");
-  static void initTray(){
-    if (!SystemTray.isSupported()) {
-      System.out.println("SystemTray is not supported");
-      return;
-    }
-    final PopupMenu popup = new PopupMenu();
-    URL url = LT_GRAY_TRAIN;
-    Image image = Toolkit.getDefaultToolkit().getImage(url);
-    final TrayIcon trayIcon = new TrayIcon(image);
-    final SystemTray tray = SystemTray.getSystemTray();
-    Menu displayMenu = new Menu("Display");
-    MenuItem infoItem = new MenuItem("Info");
-    MenuItem exitItem = new MenuItem("Exit");
-    exitItem.addActionListener(e-> System.exit(0));
-    popup.add(displayMenu);
-    displayMenu.add(infoItem);
-    popup.add(exitItem);
-
-    trayIcon.setPopupMenu(popup);
-
+  private  static SystemTray systemTray = SystemTray.get();
+  private static URL LT_GRAY_TRAIN;
+  static {
     try {
-      tray.add(trayIcon);
-    } catch (AWTException e) {
-      System.out.println("TrayIcon could not be added.");
+      LT_GRAY_TRAIN = Tray.class.getResource("/icon/icon.jpg").toURI().toURL();
+    } catch (MalformedURLException | URISyntaxException e) {
+      e.printStackTrace();
     }
+  }
+
+  static void initTray() {
+    systemTray.setTooltip("WSocks");
+    systemTray.setImage(LT_GRAY_TRAIN);
+    systemTray.setStatus("No Action");
+    Menu mainMenu = systemTray.getMenu();
+    MenuItem openEntry = new MenuItem("打开",event->{
+      try {
+        Desktop.getDesktop().browse(new URI("http://localhost:1078"));
+      } catch (IOException | URISyntaxException e) {
+        e.printStackTrace();
+      }
+    });
+    mainMenu.add(openEntry);
+    MenuItem proxySettingEntry = new MenuItem("PAC代理",(event)->{
+
+    });
+    mainMenu.add(proxySettingEntry);
+    MenuItem quitEntry = new MenuItem("Quit",event-> System.exit(0));
+    mainMenu.add(quitEntry);
   }
 }

@@ -1,13 +1,10 @@
 {
-    "name":"zz1-LA",
-    "lowendbox":true,
-    "server":"udp",
-    "http":1889,
-    "udp": 1890,
-    "maxWaitSnd":8000,
-    "WndSize": 256,
-    "mtu": 1200,
-    "host":"107.172.122.191",
-    "slave":"urmyslave",
-    "center":"http://107.173.11.140:7771"
+  "name": "zz1-LA",
+  "lowendbox": true,
+  "login": 1889,
+  "maxWaitSnd": 8000,
+  "WndSize": 256,
+  "mtu": 1200,
+  "slave": "urmyslave",
+  "center": "http://www.zzyun.co:7771"
 }

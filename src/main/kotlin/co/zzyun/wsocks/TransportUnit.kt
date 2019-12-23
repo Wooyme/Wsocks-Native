@@ -10,7 +10,7 @@ import java.net.InetAddress
 import java.util.*
 import kotlin.collections.HashMap
 
-class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd:Int,private val token:String,private val httpClient:HttpClient,private val centerUrl:String):AbstractVerticle() {
+class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val maxWaitSnd:Int, private val token:String, private val httpClient:HttpClient, private val centerUrl:String):AbstractVerticle() {
   companion object {
       private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
       private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
@@ -28,7 +28,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
     val data = ByteArray(8 * 1024 * 1024)
     vertx.eventBus().localConsumer<Buffer>("unit-${kcp.conv}"){
       if(debug){
-        println("[unit-${kcp.conv}]: DataLen ${it.body().length()}")
+        println("[unit-send-${kcp.conv}]: DataLen ${it.body().length()}")
       }
       kcp.Input(it.body().bytes)
     }
@@ -36,13 +36,16 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
       kcp.Update(Date().time)
       var len = kcp.Recv(data)
       while (len > 0) {
+        if(debug){
+          println("[unit-recv-${kcp.conv}]: DataLen $len")
+        }
         handle(Buffer.buffer().appendBytes(data, 0, len))
         len = kcp.Recv(data)
       }
     }
-    this.heartTimerID = vertx.setPeriodic(5*10*1000){
+    this.heartTimerID = vertx.setPeriodic(10*1000){
       //5分钟未收到任何数据则关闭这个单元
-      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60*5){
+      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60){
         this.stop()
       }
     }
@@ -79,7 +82,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
         clientRawHandler(RawData(key, buffer))
       }
       Flag.DNS.ordinal -> clientDNSHandler(DnsQuery(key, buffer))
-      Flag.EXCEPTION.ordinal -> clientExceptionHandler(co.zzyun.wsocks.data.Exception(key, buffer))
+      Flag.EXCEPTION.ordinal -> clientExceptionHandler(Exception(key, buffer))
       Flag.HEART.ordinal->{
         this.lastAccessTs = Date().time
         kcp.Send(heart)
@@ -91,7 +94,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
   private fun clientConnectHandler(data: ClientConnect) {
     netClient.connect(data.port, InetAddress.getByName(data.host).hostAddress) {nr->
       if(nr.failed()){
-        kcp.Send(co.zzyun.wsocks.data.Exception.create(key,data.uuid,nr.cause().localizedMessage).bytes)
+        kcp.Send(Exception.create(key,data.uuid,nr.cause().localizedMessage).bytes)
         return@connect
       }
       val net = nr.result()
@@ -107,10 +110,10 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
         kcp.Send(RawData.create(key, data.uuid, buffer).bytes)
       }.closeHandler {
         conMap.remove(data.uuid)
-        kcp.Send(co.zzyun.wsocks.data.Exception.create(key,data.uuid,"").bytes)
+        kcp.Send(Exception.create(key,data.uuid,"").bytes)
       }.exceptionHandler {
         conMap.remove(data.uuid)
-        kcp.Send(co.zzyun.wsocks.data.Exception.create(key,data.uuid,"").bytes)
+        kcp.Send(Exception.create(key,data.uuid,"").bytes)
       }
       conMap[data.uuid] = net
       kcp.Send(ConnectSuccess.create(key, data.uuid).bytes)
@@ -119,7 +122,7 @@ class TransportUnit(val kcp:KCP,private val key:ByteArray,private val maxWaitSnd
 
   private fun clientRawHandler( data: RawData) {
     conMap[data.uuid]?.write(data.data) ?: let {
-      kcp.Send(co.zzyun.wsocks.data.Exception.create(key, data.uuid, "Remote socket has closed").bytes)
+      kcp.Send(Exception.create(key, data.uuid, "Remote socket has closed").bytes)
     }
   }
 

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-4">
+      <div class="form-group">
+        <label>用户名</label>
+        <input id="user" class="form-control">
+        <label>密码</label>
+        <input id="pass" class="form-control">
+        <button class="form-control" style="margin-top: 10px" onclick="login()">登录</button>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="form-group">
+        <label>列表</label>
+        <div id="list" class="row">
+
+        </div>
+        <label>状态</label>
+        <textarea class="form-control" id="status" rows="10"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<script>
+  window.onload = function(e){
+    var id;
+    getHosts();
+    $(window).focus(function(e){
+      id = setInterval(function () {
+        $.get("/status", function (data, status) {
+          $('#status').val(data)
+        })
+      }, 1000)
+    });
+    $(window).blur(function(e){
+      clearInterval(id);
+    });
+    id = setInterval(function () {
+      $.get("/status", function (data, status) {
+        $('#status').val(data)
+      })
+    }, 1000);
+  };
+  function login() {
+    var user = $('#user').val();
+    var pass = $('#pass').val();
+    $.get("/start?center_host=www.zzyun.co&center_port=7771&user=" + user + "&pass=" + pass, function (data, status) {
+      if(data!=='')
+        alert(data);
+      else
+        getHosts();
+    });
+  }
+
+  function getHosts(){
+    $.get("/hosts",function(data,status){
+      if(data!=null) {
+        data = JSON.parse(data);
+        for (var i = 0; i < data.length; i++) {
+          var obj = data[i];
+          var html = '<div class="col-md-3"><button class="form-control" onclick="connect(\'' + obj.host + '\',' + obj.port + ')">' + obj.name + '</button></div>';
+          $('#list').append(html);
+        }
+      }
+    });
+  }
+  function connect(host,port){
+    $.get("/connect?host="+host+"&port="+port+"&type=websocket",function(data,status){
+      if(data!=null){
+        alert(data);
+      }
+    });
+  }
+</script>
+
+</body>
+</html>

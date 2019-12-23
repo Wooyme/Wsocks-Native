@@ -2,19 +2,31 @@ package co.zzyun.center;
 
 import co.zzyun.wsocks.data.UserInfo;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.net.SocketAddress;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UserInfoFull {
+
   private UserInfo info;
   private AtomicInteger usage = new AtomicInteger(0);
-  private HashMap<String,ConnectInfo> tokens = new HashMap<>();
+  private HashSet<String> connections = new HashSet<>();
+  private String token;
   UserInfoFull(JsonObject json){
     this.info = UserInfo.Companion.fromJson(json);
     if(json.containsKey("usage")) {
       this.usage.set(json.getInteger("usage"));
     }
+  }
+
+  public String getToken() {
+    return token;
+  }
+
+  public void setToken(String token) {
+    this.token = token;
   }
   public int getUsage() {
     return usage.get();
@@ -32,11 +44,15 @@ public class UserInfoFull {
     this.info = info;
   }
 
-  public HashMap<String,ConnectInfo> getTokens() {
-    return tokens;
+  public void addConnection(String host,String serverName){
+    this.connections.add(host+":"+serverName);
   }
-
-
+  public void removeConnection(String host, String serverName){
+    this.connections.remove(host+":"+serverName);
+  }
+  public int getConnections(){
+    return this.connections.size();
+  }
   @Override
   public String toString() {
     return new JsonObject()
@@ -53,7 +69,7 @@ public class UserInfoFull {
       .put("user",info.getUsername())
       .put("pass",info.getPassword())
       .put("multiple",info.getMaxLoginDevices())
-      .put("connect",tokens.size())
+      .put("connect",connections.size())
       .put("usage",usage.get())
       .put("limit",info.getLimitation());
   }

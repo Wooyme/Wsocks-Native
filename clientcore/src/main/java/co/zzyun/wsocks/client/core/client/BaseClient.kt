@@ -1,18 +1,19 @@
 package co.zzyun.wsocks.client.core.client
 
 import co.zzyun.wsocks.client.core.KCP
-import co.zzyun.wsocks.client.core.SimpleUdp
 import co.zzyun.wsocks.data.*
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
+import io.vertx.core.MultiMap
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpClientOptions
+import io.vertx.core.http.WebSocket
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.NetServer
 import io.vertx.core.net.NetSocket
 import java.net.Inet4Address
-import java.net.InetAddress
 import java.util.*
 
 class BaseClient : AbstractVerticle() {
@@ -24,14 +25,10 @@ class BaseClient : AbstractVerticle() {
   }
 
   private val eventBus by lazy { vertx.eventBus() }
-  private lateinit var netServer: NetServer
+  private val netServer: NetServer by lazy { vertx.createNetServer() }
   private val connectMap = HashMap<String, NetSocket>()
-  private var remotePort: Int = 0
   private val centerHost by lazy { config().getString("center.host") }
   private val centerPort by lazy { config().getInteger("center.port") }
-  private lateinit var remoteHost: String
-  private var xSrcPort: Int = 0
-  private lateinit var xSrcHost: String
   private val userInfo: UserInfo by lazy { UserInfo.fromJson(config().getJsonObject("user.info")) }
 
   private val udpServer by lazy { vertx.createDatagramSocket() }
@@ -41,17 +38,27 @@ class BaseClient : AbstractVerticle() {
 
   private fun KCP.input(buffer: Buffer) = eventBus.send("kcp-input", buffer)
 
-  private fun isKcpInitialized() = this::kcp.isInitialized
+  private val isKcpInitialized:Boolean get() = this::kcp.isInitialized
   private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
   private var lastAccessTs = 0L
   private var heartTimerID = 0L
   private var timerID = 0L
-  private var isOffline = true
-
+  private var noUdp = false
+  private var statusMessage = ""
+  private val hosts = JsonArray()
+  private fun log(message:String){
+    statusMessage += "[${Date().toLocaleString()}]: $message\n"
+  }
   override fun start(future: Future<Void>) {
+    vertx.eventBus().consumer<Any>("status"){ msg->
+      msg.reply(statusMessage)
+    }
+    vertx.eventBus().consumer<Any>("hosts"){
+      it.reply(hosts)
+    }
     val data = ByteArray(8 * 1024 * 1024)
     this.timerID = vertx.setPeriodic(10) {
-      if (!this::kcp.isInitialized) return@setPeriodic
+      if (!isKcpInitialized) return@setPeriodic
       kcp.Update(Date().time)
       var len = kcp.Recv(data)
       while (len > 0) {
@@ -63,51 +70,63 @@ class BaseClient : AbstractVerticle() {
       kcp.Input(it.body().bytes)
     }
     vertx.eventBus().consumer<JsonObject>("client-connect"){ msg->
-      this.remoteHost = msg.body().getString("host")
-      this.remotePort = msg.body().getInteger("port")
-      httpClient.get(remotePort, remoteHost, "/login?token=$myToken") {
-        if (it.statusCode() != 200) return@get msg.fail(it.statusCode(),it.statusMessage())
-        xSrcHost = it.headers()["x-src-host"]
-        xSrcPort = it.headers()["x-src-port"].toInt()
-        udpServer.send(Buffer.buffer("go"),it.headers()["x-src-port"].toInt(),it.headers()["x-src-host"]){}
-        val conv = it.headers()["x-conv"].toLong()
-        initKcp(conv)
-        this.isOffline = false
-        msg.reply("OK")
-      }.exceptionHandler {
-        msg.fail(499,it.localizedMessage)
-      }.end()
+      val remoteHost = msg.body().getString("host")
+      val remotePort = msg.body().getInteger("port")
+      val type = msg.body().getString("type")
+      reconnect(remoteHost,remotePort,type,!noUdp)
     }
-    vertx.eventBus().consumer<Any>("status"){ msg->
-      if(this.isOffline) msg.reply("")
-      else msg.reply("OK")
+    httpClient.get(this.centerPort,this.centerHost,"/login?user=${userInfo.username}&pass=${userInfo.password}"){
+      if(it.statusCode()==200){
+        this.myToken = it.getHeader("x-token")
+        log("用户${userInfo.username}登录成功")
+        it.headers().filter { it.key.startsWith("x-host") }.forEach {
+          it.value.split("+").let {
+            hosts.add(JsonObject().put("name",it[0]).put("host",it[1]).put("port",it[2].toInt()))
+          }
+        }
+        future.complete()
+      }else{
+        log("用户${userInfo.username}登录失败，原因${it.statusMessage()}")
+        future.fail("用户${userInfo.username}登录失败，原因${it.statusMessage()}")
+      }
+    }.end()
+
+    udpServer.listen(1079,"0.0.0.0"){
+      if(it.failed()){
+        this.noUdp = true
+        log("UDP监听失败")
+      }
     }
-    preLogin(future)
-    initSocksServer()
-    udpServer.listen(1079,"0.0.0.0"){}
   }
 
-  private fun initKcp(conv: Long) {
-    val inet = InetAddress.getByName(xSrcHost)
+  private fun initKcp(conv: Long,ws:WebSocket):KCP {
     kcp = object : KCP(conv) {
       override fun output(buffer: ByteArray, size: Int) {
-        udpServer.send(Buffer.buffer().appendBytes(buffer, 0, size),xSrcPort, inet.hostAddress){}
+        try {
+          ws.writeBinaryMessage(Buffer.buffer().appendBytes(buffer, 0, size))
+        }catch(e:Throwable){
+          log("远程连接断开")
+          offline()
+        }
       }
     }
     kcp.SetMtu(1200)
     kcp.WndSize(256, 256)
     kcp.NoDelay(1, 10, 2, 1)
-    this.heartTimerID = vertx.setPeriodic(60*1000){
+    this.heartTimerID = vertx.setPeriodic(1000){
       //5分钟未收到任何数据则关闭client
       if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60*5){
+        log("连接超时")
         this.offline()
       }
       kcp.Send(heart)
     }
+    return kcp
   }
 
   override fun stop() {
     println("Stopping client...")
+    log("关闭本地服务器")
     offline()
     httpClient.close()
     udpServer.close()
@@ -116,38 +135,34 @@ class BaseClient : AbstractVerticle() {
   }
 
 
-  private fun preLogin(msg: Future<Void>) {
-    var loginTimerId = 0L
+  private fun initUdp(centerHost:String,centerPort:Int):Future<JsonObject>{
+    var reqTimerId = 0L
+    var times = 0
+    val future = Future.future<JsonObject>()
     this.udpServer.handler {
       if (it.sender().port() == centerPort) {
-        if (this::myToken.isInitialized) return@handler
         val buffer = it.data()
-        vertx.cancelTimer(loginTimerId)
-        val status = try {
-          buffer.toJsonObject().getInteger("status")
+        vertx.cancelTimer(reqTimerId)
+        val json = try {
+          buffer.toJsonObject()
         } catch (e: Throwable) {
-          return@handler msg.fail(e.localizedMessage)
+          return@handler future.fail(e)
         }
-        if (status == -1) {
-          return@handler msg.fail("Wrong username or password")
-        }
-        if (status == -2) {
-          return@handler msg.fail("Full device connection")
-        }
-        myToken = try {
-          buffer.toJsonObject().getString("token")
-        } catch (e: Throwable) {
-          return@handler msg.fail(e.localizedMessage)
-        }
-        msg.complete()
+        future.complete(json)
       } else {
-        if (!isKcpInitialized()) return@handler
-        kcp.input(it.data())
+        if (isKcpInitialized) kcp.input(it.data())
       }
     }
-    loginTimerId = vertx.setPeriodic(1000) {
-      this.udpServer.send(JsonObject().put("user", userInfo.username).put("pass", userInfo.password).toBuffer(),centerPort, InetAddress.getByName(centerHost).hostAddress){}
+    log("获取本机公网端口")
+    reqTimerId = vertx.setPeriodic(1000) {
+      if(times>10){
+        vertx.cancelTimer(reqTimerId)
+        future.fail("公网端口请求超时")
+      }
+      this.udpServer.send("GO",centerPort, centerHost){}
+      times++
     }
+    return future
   }
 
   private fun handle(buffer: Buffer) {
@@ -167,24 +182,54 @@ class BaseClient : AbstractVerticle() {
 
   private fun offline(){
     println("-----------------Offline-----------------")
-    vertx.cancelTimer(timerID)
-    vertx.cancelTimer(heartTimerID)
-    if (this::kcp.isInitialized) kcp.clean()
+    log("清空连接...")
+    if(timerID!=0L) vertx.cancelTimer(timerID)
+    if(heartTimerID!=0L)vertx.cancelTimer(heartTimerID)
+    if (isKcpInitialized) kcp.clean()
     this.netServer.close()
   }
 
-  private fun initSocksServer() {
-    println("Init socks server")
-    if (this::netServer.isInitialized) {
-      try { this.netServer.close() }catch(ignored:Throwable){}
-    }
-    println("Create socks server")
-    this.netServer = vertx.createNetServer().connectHandler { socket ->
-      //收到来自浏览器的连接，但是通道还没有完成，则关闭连接
-      if (!this::kcp.isInitialized) {
-        socket.close()
-        return@connectHandler
+  private fun reconnect(remoteHost:String,remotePort:Int,type:String,enableUdp:Boolean){
+    this.offline()
+    val conv = Date().time/1000
+    val json = JsonObject().put("token",myToken).put("conv",conv)
+    val headers = MultiMap.caseInsensitiveMultiMap()
+    if(type=="udp" && enableUdp){
+      initUdp(this.centerHost,this.centerPort).setHandler {
+        if(it.failed()){
+          log("公网端口请求超时")
+        }else {
+          log("获取本机公网端口成功 IP:${it.result().getString("host")},端口:${it.result().getInteger("port")}")
+          json.put("recv", "pcap")
+          json.put("host", it.result().getString("host"))
+          json.put("port", it.result().getInteger("port"))
+          headers["info"] = RSAUtil.encrypt(json.toString(), RSAUtil.publicKey)
+          httpClient.websocket(remotePort, remoteHost, "/chat", headers,{
+            log("连接到目标服务器 $remoteHost:$remotePort")
+            initSocksServer(initKcp(conv, it))
+          }){
+            log("拒接连接")
+          }
+        }
       }
+    }else{
+      json.put("recv","websocket")
+      headers["info"] = RSAUtil.encrypt(json.toString(),RSAUtil.publicKey)
+      httpClient.websocket(remotePort,remoteHost,"/chat", headers){
+        log("连接到目标服务器 $remoteHost:$remotePort")
+        it.binaryMessageHandler {
+          kcp.input(it)
+        }
+        initSocksServer(initKcp(conv,it))
+      }
+    }
+  }
+
+
+  private fun initSocksServer(kcp:KCP) {
+    println("Init socks server")
+    try { this.netServer.close() }catch(ignored:Throwable){}
+    this.netServer.connectHandler { socket ->
       val uuid = UUID.randomUUID().toString()
       socket.handler {
         //如果连接已经建立，则直接使用通道，否则进入socks5连接过程
@@ -204,6 +249,7 @@ class BaseClient : AbstractVerticle() {
       }
     }.listen(port) {
       println("Listen at $port")
+      log("启动Socks5服务器")
     }
   }
 
