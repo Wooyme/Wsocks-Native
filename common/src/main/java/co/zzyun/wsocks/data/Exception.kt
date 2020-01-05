@@ -8,12 +8,12 @@ class Exception(key:ByteArray,buffer: Buffer) {
   val message get() = json.getString("message")
   val uuid get() = json.getString("uuid")
   companion object {
-    fun create(key:ByteArray,uuid:String,message:String):Buffer {
+    fun create(key:ByteArray,uuid:String,message:String):ByteArray {
       val encryptedBuffer = Aes.encrypt(JsonObject()
           .put("message", message)
           .put("uuid", uuid)
           .toBuffer().bytes,key,true)
-      return Buffer.buffer().appendIntLE(Flag.EXCEPTION.ordinal).appendBytes(encryptedBuffer)
+      return Buffer.buffer().appendIntLE(Flag.EXCEPTION.ordinal).appendBytes(encryptedBuffer).bytes
     }
   }
 }

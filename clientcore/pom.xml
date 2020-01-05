@@ -18,6 +18,12 @@
     <maven.compiler.source>8</maven.compiler.source>
     <maven.compiler.target>8</maven.compiler.target>
   </properties>
+  <repositories>
+    <repository>
+      <id>clojars</id>
+      <url>http://clojars.org/repo/</url>
+    </repository>
+  </repositories>
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -40,6 +46,11 @@
       <version>[1.0,2.0)</version>
     </dependency>
     <dependency>
+      <groupId>org.java-websocket</groupId>
+      <artifactId>Java-WebSocket</artifactId>
+      <version>1.3.9</version>
+    </dependency>
+    <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
       <version>1.4</version>
@@ -60,10 +71,11 @@
       <version>1.7.25</version>
     </dependency>
     <dependency>
-      <groupId>com.oracle.substratevm</groupId>
-      <artifactId>svm</artifactId>
-      <version>19.1.1</version>
+      <groupId>com.dorkbox</groupId>
+      <artifactId>SystemTray</artifactId>
+      <version>3.15</version>
     </dependency>
+
   </dependencies>
   <build>
     <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
@@ -117,7 +129,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>co.zzyun.wsocks.client.core.Client</mainClass>
+              <mainClass>client.Launcher</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -127,7 +139,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>co.zzyun.wsocks.client.core.Client</mainClass>
+              <mainClass>client.Launcher</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>

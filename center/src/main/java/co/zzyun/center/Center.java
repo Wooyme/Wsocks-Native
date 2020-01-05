@@ -115,6 +115,7 @@ public class Center {
         break;
         // online?token=&host=&name=
         case "/online": {
+          System.out.println("[Online]:"+req.getParam("token"));
           if (tokenMap.containsKey(req.getParam("token"))) {
             UserInfoFull uInfo = tokenMap.get(req.getParam("token"));
             uInfo.addConnection(req.getParam("host"),req.getParam("name"));

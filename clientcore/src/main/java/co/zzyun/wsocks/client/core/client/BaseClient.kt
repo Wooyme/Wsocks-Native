@@ -6,55 +6,89 @@ import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
 import io.vertx.core.MultiMap
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.http.HttpClient
+import io.vertx.core.datagram.DatagramSocket
 import io.vertx.core.http.HttpClientOptions
-import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.NetServer
 import io.vertx.core.net.NetSocket
+import org.java_websocket.client.WebSocketClient
+import org.java_websocket.handshake.ServerHandshake
 import java.net.Inet4Address
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.ByteBuffer
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
-class BaseClient : AbstractVerticle() {
+class BaseClient(private val centerHost:String,private val centerPort:Int,private val userInfo: UserInfo) : AbstractVerticle() {
   companion object {
-    private const val port = 1090
+    private const val port = 1080
     private val handshakeBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x00.toByte())
     private val connSuccessBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x00.toByte()).appendByte(0x00.toByte()).appendByte(0x01.toByte()).appendBytes(ByteArray(6) { 0x0 })
     private val unsupportedBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x08.toByte())
+    private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
   }
-
-  private val eventBus by lazy { vertx.eventBus() }
-  private val netServer: NetServer by lazy { vertx.createNetServer() }
-  private val connectMap = HashMap<String, NetSocket>()
-  private val centerHost by lazy { config().getString("center.host") }
-  private val centerPort by lazy { config().getInteger("center.port") }
-  private val userInfo: UserInfo by lazy { UserInfo.fromJson(config().getJsonObject("user.info")) }
-
-  private val udpServer by lazy { vertx.createDatagramSocket() }
+  private lateinit var netServer:NetServer
+  private val connectMap = ConcurrentHashMap<String, NetSocket>()
+  private lateinit var udpServer:DatagramSocket
   private lateinit var myToken: String
-  private val httpClient: HttpClient by lazy { vertx.createHttpClient(HttpClientOptions().setMaxPoolSize(1).setKeepAlive(true)) }
-  lateinit var kcp: KCP
-
-  private fun KCP.input(buffer: Buffer) = eventBus.send("kcp-input", buffer)
-
+  private lateinit var kcp: KCP
   private val isKcpInitialized:Boolean get() = this::kcp.isInitialized
-  private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
   private var lastAccessTs = 0L
   private var heartTimerID = 0L
   private var timerID = 0L
-  private var noUdp = false
-  private var statusMessage = ""
-  private val hosts = JsonArray()
+  private val httpClient by lazy { vertx.createHttpClient(HttpClientOptions()) }
+  private var webSocketClient: io.vertx.core.http.WebSocket?=null
+  val hosts = JsonArray()
+  var statusMessage = ""
   private fun log(message:String){
     statusMessage += "[${Date().toLocaleString()}]: $message\n"
   }
-  override fun start(future: Future<Void>) {
-    vertx.eventBus().consumer<Any>("status"){ msg->
-      msg.reply(statusMessage)
+  override fun start(future:Future<Void>){
+    httpClient.get(centerPort,centerHost,"/login?user=${userInfo.username}&pass=${userInfo.password}").handler {
+      if(it.statusCode()==200){
+        log("用户${userInfo.username}登录成功")
+        myToken = it.headers().get("x-token")
+        it.headers().filter {
+          it.key.startsWith("x-host")
+        }.forEach {
+          it.value.split("+").let{
+            hosts.add(JsonObject().put("name",it[0]).put("host",it[1]).put("port",it[2].toInt()))
+          }
+        }
+        future.complete()
+      }else{
+        log("用户${userInfo.username}登录失败，原因${it.statusMessage()}")
+        throw Throwable("Login Failed")
+      }
+    }.end()
+  }
+
+  private fun initKcp(conv: Long):KCP {
+    kcp = object : KCP(conv) {
+      override fun output(buffer: ByteArray, size: Int) {
+        try {
+            webSocketClient?.writeBinaryMessage(Buffer.buffer().appendBytes(buffer,0,size))
+              ?:println("WebSocket is closed")
+        }catch(e:Throwable){
+          log("远程连接断开")
+          offline()
+        }
+      }
     }
-    vertx.eventBus().consumer<Any>("hosts"){
-      it.reply(hosts)
+    kcp.SetMtu(1200)
+    kcp.WndSize(256, 256)
+    kcp.NoDelay(1, 10, 2, 1)
+    this.heartTimerID = vertx.setPeriodic(10*1000){
+      //1分钟未收到任何数据则关闭client
+      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60){
+        log("连接超时")
+        this.offline()
+      }
+      kcp.Send(heart)
     }
     val data = ByteArray(8 * 1024 * 1024)
     this.timerID = vertx.setPeriodic(10) {
@@ -66,61 +100,6 @@ class BaseClient : AbstractVerticle() {
         len = kcp.Recv(data)
       }
     }
-    vertx.eventBus().consumer<Buffer>("kcp-input") {
-      kcp.Input(it.body().bytes)
-    }
-    vertx.eventBus().consumer<JsonObject>("client-connect"){ msg->
-      val remoteHost = msg.body().getString("host")
-      val remotePort = msg.body().getInteger("port")
-      val type = msg.body().getString("type")
-      reconnect(remoteHost,remotePort,type,!noUdp)
-    }
-    httpClient.get(this.centerPort,this.centerHost,"/login?user=${userInfo.username}&pass=${userInfo.password}"){
-      if(it.statusCode()==200){
-        this.myToken = it.getHeader("x-token")
-        log("用户${userInfo.username}登录成功")
-        it.headers().filter { it.key.startsWith("x-host") }.forEach {
-          it.value.split("+").let {
-            hosts.add(JsonObject().put("name",it[0]).put("host",it[1]).put("port",it[2].toInt()))
-          }
-        }
-        future.complete()
-      }else{
-        log("用户${userInfo.username}登录失败，原因${it.statusMessage()}")
-        future.fail("用户${userInfo.username}登录失败，原因${it.statusMessage()}")
-      }
-    }.end()
-
-    udpServer.listen(1079,"0.0.0.0"){
-      if(it.failed()){
-        this.noUdp = true
-        log("UDP监听失败")
-      }
-    }
-  }
-
-  private fun initKcp(conv: Long,ws:WebSocket):KCP {
-    kcp = object : KCP(conv) {
-      override fun output(buffer: ByteArray, size: Int) {
-        try {
-          ws.writeBinaryMessage(Buffer.buffer().appendBytes(buffer, 0, size))
-        }catch(e:Throwable){
-          log("远程连接断开")
-          offline()
-        }
-      }
-    }
-    kcp.SetMtu(1200)
-    kcp.WndSize(256, 256)
-    kcp.NoDelay(1, 10, 2, 1)
-    this.heartTimerID = vertx.setPeriodic(1000){
-      //5分钟未收到任何数据则关闭client
-      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60*5){
-        log("连接超时")
-        this.offline()
-      }
-      kcp.Send(heart)
-    }
     return kcp
   }
 
@@ -128,9 +107,6 @@ class BaseClient : AbstractVerticle() {
     println("Stopping client...")
     log("关闭本地服务器")
     offline()
-    httpClient.close()
-    udpServer.close()
-    connectMap.clear()
     super.stop()
   }
 
@@ -150,7 +126,7 @@ class BaseClient : AbstractVerticle() {
         }
         future.complete(json)
       } else {
-        if (isKcpInitialized) kcp.input(it.data())
+        if (isKcpInitialized) kcp.Input(it.data().bytes)
       }
     }
     log("获取本机公网端口")
@@ -184,17 +160,30 @@ class BaseClient : AbstractVerticle() {
     println("-----------------Offline-----------------")
     log("清空连接...")
     if(timerID!=0L) vertx.cancelTimer(timerID)
-    if(heartTimerID!=0L)vertx.cancelTimer(heartTimerID)
+    if(heartTimerID!=0L) vertx.cancelTimer(heartTimerID)
+    lastAccessTs = 0L
     if (isKcpInitialized) kcp.clean()
-    this.netServer.close()
+    if(this::netServer.isInitialized) try { netServer.close() }catch (ignored:Throwable){}
+    try{
+      webSocketClient?.close()
+      webSocketClient = null
+    }catch (ignored:Throwable){}
+    connectMap.clear()
   }
 
-  private fun reconnect(remoteHost:String,remotePort:Int,type:String,enableUdp:Boolean){
+  private fun online(){
+    println("-----------------online-----------------")
+    log("启动连接")
+    this.udpServer = vertx.createDatagramSocket()
+    this.netServer = vertx.createNetServer()
+  }
+
+  fun reconnect(remoteHost:String,remotePort:Int,type:String){
     this.offline()
+    this.online()
     val conv = Date().time/1000
     val json = JsonObject().put("token",myToken).put("conv",conv)
-    val headers = MultiMap.caseInsensitiveMultiMap()
-    if(type=="udp" && enableUdp){
+    if(type=="udp"){
       initUdp(this.centerHost,this.centerPort).setHandler {
         if(it.failed()){
           log("公网端口请求超时")
@@ -203,24 +192,31 @@ class BaseClient : AbstractVerticle() {
           json.put("recv", "pcap")
           json.put("host", it.result().getString("host"))
           json.put("port", it.result().getInteger("port"))
-          headers["info"] = RSAUtil.encrypt(json.toString(), RSAUtil.publicKey)
-          httpClient.websocket(remotePort, remoteHost, "/chat", headers,{
-            log("连接到目标服务器 $remoteHost:$remotePort")
-            initSocksServer(initKcp(conv, it))
+          httpClient.websocket(remotePort,remoteHost,"/chat", MultiMap.caseInsensitiveMultiMap().apply {
+            this["info"] = RSAUtil.encrypt(json.toString(), RSAUtil.publicKey)
+          },{
+            this.webSocketClient = it
+            it.binaryMessageHandler {
+              kcp.Input(it.bytes)
+            }
+            initSocksServer(initKcp(conv))
           }){
-            log("拒接连接")
+            log("拒绝连接")
           }
         }
       }
     }else{
       json.put("recv","websocket")
-      headers["info"] = RSAUtil.encrypt(json.toString(),RSAUtil.publicKey)
-      httpClient.websocket(remotePort,remoteHost,"/chat", headers){
-        log("连接到目标服务器 $remoteHost:$remotePort")
+      httpClient.websocket(remotePort,remoteHost,"/chat", MultiMap.caseInsensitiveMultiMap().apply {
+        this["info"] = RSAUtil.encrypt(json.toString(), RSAUtil.publicKey)
+      },{
+        this.webSocketClient = it
         it.binaryMessageHandler {
-          kcp.input(it)
+          kcp.Input(it.bytes)
         }
-        initSocksServer(initKcp(conv,it))
+        initSocksServer(initKcp(conv))
+      }){
+        log("拒绝连接")
       }
     }
   }
@@ -234,13 +230,13 @@ class BaseClient : AbstractVerticle() {
       socket.handler {
         //如果连接已经建立，则直接使用通道，否则进入socks5连接过程
         if (connectMap.containsKey(uuid)) {
-          kcp.Send(RawData.create(userInfo.key, uuid, it).bytes)
+          kcp.Send(RawData.create(userInfo.key, uuid, it))
         } else {
           bufferHandler(uuid, socket, it)
         }
       }.closeHandler {
         connectMap.remove(uuid)?.handler(null)
-        kcp.Send(Exception.create(userInfo.key, uuid, "").bytes)
+        kcp.Send(Exception.create(userInfo.key, uuid, ""))
       }.exceptionHandler {
         try {
           connectMap.remove(uuid)?.close()
@@ -312,7 +308,7 @@ class BaseClient : AbstractVerticle() {
 
   private fun tryConnect(uuid: String, netSocket: NetSocket, host: String, port: Int) {
     connectMap[uuid] = netSocket
-    kcp.Send(ClientConnect.create(userInfo.key, uuid, host, port).bytes)
+    kcp.Send(ClientConnect.create(userInfo.key, uuid, host, port))
   }
 
   private fun connectedHandler(uuid: String) {

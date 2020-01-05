@@ -1,4 +1,4 @@
-package co.zzyun.client;
+package client;
 
 public class Property{
   private String name;

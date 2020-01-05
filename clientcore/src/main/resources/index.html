@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Title</title>
+  <title>代理管理</title>
   <link href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
@@ -37,7 +37,7 @@
     getHosts();
     $(window).focus(function(e){
       id = setInterval(function () {
-        $.get("/status", function (data, status) {
+        $.get("http://localhost:1078/status", function (data, status) {
           $('#status').val(data)
         })
       }, 1000)
@@ -46,7 +46,7 @@
       clearInterval(id);
     });
     id = setInterval(function () {
-      $.get("/status", function (data, status) {
+      $.get("http://localhost:1078/status", function (data, status) {
         $('#status').val(data)
       })
     }, 1000);
@@ -54,7 +54,7 @@
   function login() {
     var user = $('#user').val();
     var pass = $('#pass').val();
-    $.get("/start?center_host=www.zzyun.co&center_port=7771&user=" + user + "&pass=" + pass, function (data, status) {
+    $.get("http://localhost:1078/start?center_host=www.zzyun.co&center_port=7771&user=" + user + "&pass=" + pass, function (data, status) {
       if(data!=='')
         alert(data);
       else
@@ -63,20 +63,20 @@
   }
 
   function getHosts(){
-    $.get("/hosts",function(data,status){
+    $.get("http://localhost:1078/hosts",function(data,status){
       if(data!=null) {
         data = JSON.parse(data);
         for (var i = 0; i < data.length; i++) {
           var obj = data[i];
-          var html = '<div class="col-md-3"><button class="form-control" onclick="connect(\'' + obj.host + '\',' + obj.port + ')">' + obj.name + '</button></div>';
+          var html = '<div class="col-md-3"><button class="form-control" onclick="connect(\''+obj.name+'\',\'' + obj.host + '\',' + obj.port + ')">' + obj.name + '</button></div>';
           $('#list').append(html);
         }
       }
     });
   }
-  function connect(host,port){
-    $.get("/connect?host="+host+"&port="+port+"&type=websocket",function(data,status){
-      if(data!=null){
+  function connect(name,host,port){
+    $.get("http://localhost:1078/connect?host="+host+"&port="+port+"&type=websocket&name="+name,function(data,status){
+      if(data!=null && data!==''){
         alert(data);
       }
     });

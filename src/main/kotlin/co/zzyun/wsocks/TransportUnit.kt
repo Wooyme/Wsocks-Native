@@ -7,6 +7,7 @@ import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.net.NetSocket
 import java.net.InetAddress
+import java.nio.ByteBuffer
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -43,9 +44,9 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
         len = kcp.Recv(data)
       }
     }
-    this.heartTimerID = vertx.setPeriodic(10*1000){
-      //5分钟未收到任何数据则关闭这个单元
-      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*60){
+    this.heartTimerID = vertx.setPeriodic(5*1000){
+      //1分钟未收到任何数据则关闭这个单元
+      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
         this.stop()
       }
     }
@@ -75,7 +76,7 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
   }
 
   private fun handle(buffer:Buffer){
-
+    println("[Flag:${buffer.getIntLE(0)}]:${buffer.length()}")
     when (buffer.getIntLE(0)) {
       Flag.CONNECT.ordinal -> clientConnectHandler(ClientConnect(key, buffer))
       Flag.RAW.ordinal -> {
@@ -91,10 +92,11 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
     }
   }
 
+
   private fun clientConnectHandler(data: ClientConnect) {
     netClient.connect(data.port, InetAddress.getByName(data.host).hostAddress) {nr->
       if(nr.failed()){
-        kcp.Send(Exception.create(key,data.uuid,nr.cause().localizedMessage).bytes)
+        kcp.Send(Exception.create(key,data.uuid,nr.cause().localizedMessage))
         return@connect
       }
       val net = nr.result()
@@ -107,22 +109,22 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
         }
         if(kcp.WaitSnd()>maxWaitSnd) wait()
         usage+=buffer.length()
-        kcp.Send(RawData.create(key, data.uuid, buffer).bytes)
+        kcp.Send(RawData.create(key, data.uuid, buffer))
       }.closeHandler {
         conMap.remove(data.uuid)
-        kcp.Send(Exception.create(key,data.uuid,"").bytes)
+        kcp.Send(Exception.create(key,data.uuid,""))
       }.exceptionHandler {
         conMap.remove(data.uuid)
-        kcp.Send(Exception.create(key,data.uuid,"").bytes)
+        kcp.Send(Exception.create(key,data.uuid,""))
       }
       conMap[data.uuid] = net
-      kcp.Send(ConnectSuccess.create(key, data.uuid).bytes)
+      kcp.Send(ConnectSuccess.create(key, data.uuid))
     }
   }
 
   private fun clientRawHandler( data: RawData) {
     conMap[data.uuid]?.write(data.data) ?: let {
-      kcp.Send(Exception.create(key, data.uuid, "Remote socket has closed").bytes)
+      kcp.Send(Exception.create(key, data.uuid, "Remote socket has closed"))
     }
   }
 
@@ -139,7 +141,7 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
       }
       it.complete(address)
     }) {
-      kcp.Send(DnsQuery.create(key, data.uuid, it.result()).bytes)
+      kcp.Send(DnsQuery.create(key, data.uuid, it.result()))
     }
   }
 }

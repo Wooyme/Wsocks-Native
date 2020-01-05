@@ -12,7 +12,7 @@ class RawData(key:ByteArray,buffer:Buffer) {
     data = decrypted.getBuffer(Int.SIZE_BYTES+uuidLen,decrypted.length())
   }
   companion object {
-    fun create(key:ByteArray,uuid:String,data:Buffer):Buffer {
+    fun create(key:ByteArray,uuid:String,data:Buffer):ByteArray {
       val buf = Buffer.buffer()
         .appendIntLE(uuid.length)
         .appendString(uuid)
@@ -20,7 +20,7 @@ class RawData(key:ByteArray,buffer:Buffer) {
       val encryptedBuffer = Aes.encrypt(buf.bytes,key,true)
       return Buffer.buffer()
         .appendIntLE(Flag.RAW.ordinal)
-        .appendBytes(encryptedBuffer)
+        .appendBytes(encryptedBuffer).bytes
     }
   }
 }

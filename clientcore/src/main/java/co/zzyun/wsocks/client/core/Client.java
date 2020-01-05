@@ -1,12 +1,15 @@
 package co.zzyun.wsocks.client.core;
 
+import client.Tray;
 import co.zzyun.wsocks.client.core.client.BaseClient;
+import co.zzyun.wsocks.data.UserInfo;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.file.FileSystemOptions;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
@@ -14,31 +17,44 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.util.concurrent.TimeUnit;
 
 
 public class Client {
   private static String deployId = "";
-
-  public static void main(String[] args) {
+  public static BaseClient client;
+  public static Vertx start() {
     System.setProperty("java.net.preferIPv4Stack", "true");
     System.setProperty("vertx.disableDnsResolver", "true");
     System.setProperty("io.netty.noUnsafe", "true");
     Vertx vertx = Vertx.vertx(new VertxOptions().setEventLoopPoolSize(1)
-      .setWorkerPoolSize(2)
+      .setWorkerPoolSize(1)
       .setInternalBlockingPoolSize(1)
       .setFileSystemOptions(new FileSystemOptions()
         .setFileCachingEnabled(false)
-        .setClassPathResolvingEnabled(false)));
-    final EventBus eventBus = vertx.eventBus();
+        .setClassPathResolvingEnabled(false)).setBlockedThreadCheckInterval(100000000000L));
     final String index;
     try {
       InputStream is = Client.class.getResourceAsStream("/index.html");
       index = IOUtils.toString(is, Charset.defaultCharset());
     } catch (IOException e) {
       e.printStackTrace();
-      return;
+      return null;
     }
+
     vertx.createHttpServer().requestHandler(req -> {
+      if(req.method()== HttpMethod.OPTIONS){
+        req.response().putHeader("Access-Control-Allow-Origin",req.getHeader("origin"));
+        req.response().putHeader("Access-Control-Allow-Credentials","true");
+        req.response().putHeader("Access-Control-Allow-Methods","GET, POST, PUT, DELETE, OPTIONS");
+        req.response().putHeader("Access-Control-Allow-Headers","DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type");
+        req.response().putHeader("Access-Control-Max-Age","1728000");
+        req.response().putHeader("Content-Type","text/plain charset=UTF-8");
+        req.response().setStatusCode(204).end();
+        return;
+      }
+      req.response().putHeader("Access-Control-Allow-Origin",req.getHeader("origin"));
+      req.response().putHeader("Access-Control-Allow-Credentials","true");
       switch (req.path()) {
         case "/start": {
           if (!deployId.isEmpty()) {
@@ -48,7 +64,7 @@ public class Client {
           String centerPort = req.getParam("center_port");
           String user = req.getParam("user");
           String pass = req.getParam("pass");
-          BaseClient client = new BaseClient();
+          client = new BaseClient(centerHost,Integer.parseInt(centerPort),new UserInfo(user,pass,-1,-1));
           vertx.deployVerticle(client, new DeploymentOptions().setConfig(new JsonObject()
             .put("center.host", centerHost)
             .put("center.port", Integer.valueOf(centerPort))
@@ -63,23 +79,19 @@ public class Client {
         }
         break;
         case "/connect": {
-          vertx.eventBus().send("client-connect", new JsonObject()
-            .put("host", req.getParam("host"))
-            .put("port", Integer.valueOf(req.getParam("port")))
-            .put("type",req.getParam("type")), new DeliveryOptions().setSendTimeout(120 * 1000), (r) -> {
-            if (r.failed()) {
-              req.response().end(r.cause().getMessage());
-            } else {
-              req.response().end();
-            }
-          });
+          Tray.setStatus(req.getParam("name"));
+          Tray.setCurrent("name",req.getParam("name"));
+          Tray.setCurrent("host",req.getParam("host"));
+          Tray.setCurrent("port",Integer.parseInt(req.getParam("port")));
+          Tray.setCurrent("type",req.getParam("type"));
+          client.reconnect(req.getParam("host"),Integer.parseInt(req.getParam("port")),req.getParam("host"));
         }
         break;
         case "/status": {
           if (deployId.isEmpty()) {
             req.response().end("客户端未连接");
           }else {
-            eventBus.send("status", null, new DeliveryOptions().setSendTimeout(120 * 1000), event -> req.response().setStatusCode(200).end((String) event.result().body()));
+            req.response().setStatusCode(200).end(client.getStatusMessage());
           }
         }
         break;
@@ -87,7 +99,7 @@ public class Client {
           if (deployId.isEmpty()) {
             req.response().end();
           }else {
-            eventBus.send("hosts", null, new DeliveryOptions().setSendTimeout(120 * 1000), event -> req.response().setStatusCode(200).end(((JsonArray) event.result().body()).toBuffer()));
+            req.response().end(client.getHosts().toString());
           }
         }
         break;
@@ -99,5 +111,6 @@ public class Client {
       if (r.failed()) r.cause().printStackTrace();
       else System.out.println("Listen at 1078");
     });
+    return vertx;
   }
 }

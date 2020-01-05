@@ -59,6 +59,8 @@ class WebSocketRecv:AbstractReceiver<ServerWebSocket>() {
 
   override fun close(conn: ServerWebSocket?, address: SocketAddress) {
     if(conn==null) throw RuntimeException("WebSocket cannot be null")
-    conn.close()
+    try {
+      conn.close()
+    }catch (ignored:Throwable){}
   }
 }

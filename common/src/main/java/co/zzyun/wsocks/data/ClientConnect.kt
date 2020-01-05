@@ -10,11 +10,11 @@ class ClientConnect(key:ByteArray, buffer: Buffer) {
   val uuid get() = json.getString("uuid")
 
   companion object {
-    fun create(key: ByteArray,uuid:String,host: String, port: Int): Buffer {
+    fun create(key: ByteArray,uuid:String,host: String, port: Int): ByteArray {
       val buffer = Buffer.buffer()
         .appendBuffer(JsonObject().put("host", host).put("port", port).put("uuid", uuid).toBuffer())
       return Buffer.buffer()
-          .appendIntLE(Flag.CONNECT.ordinal).appendBytes(Aes.encrypt(buffer.bytes,key,true))
+          .appendIntLE(Flag.CONNECT.ordinal).appendBytes(Aes.encrypt(buffer.bytes,key,true)).bytes
     }
   }
 }
