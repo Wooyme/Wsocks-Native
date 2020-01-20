@@ -5,9 +5,11 @@ import co.zzyun.wsocks.data.UserInfo;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.file.FileSystemOptions;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import kotlin.Pair;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -23,27 +25,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Center {
   private static Map<String, UserInfoFull> userMap = new ConcurrentHashMap<>(); // username, UserInfoFull
   private static Map<String, UserInfoFull> tokenMap = new ConcurrentHashMap<>(); // token, UserInfoFull
-  private static Set<Slave> hosts = new ConcurrentHashSet<>();
+  private static Map<Slave,Long> hosts = new ConcurrentHashMap<>();
   private static String userPath = "users";
 
-  /*args: [0]-udp端口 [1]-http端口 [2]-god秘钥 [3]-slave秘钥 [4]-salt*/
+  /*args: [0]-start [1]-http端口 [2]-god秘钥 [3]-slave秘钥 [4]-salt*/
   public static void main(String[] args) {
     System.setProperty("java.net.preferIPv4Stack", "true");
     System.setProperty("io.netty.noUnsafe", "true");
-    final SimpleUdp server = new SimpleUdp(Integer.valueOf(args[0]));
-    server.handler(p -> {
-      String host = p.getAddress().getHostAddress();
-      int port = p.getPort();
-      server.send(port, p.getAddress(), new JsonObject().put("port",port).put("host",host)
-        .toBuffer());
-    });
-    server.start();
     Vertx vertx = Vertx.vertx(
       new VertxOptions().setFileSystemOptions(new FileSystemOptions()
         .setFileCachingEnabled(false)
         .setClassPathResolvingEnabled(false))
         .setWorkerPoolSize(1).setEventLoopPoolSize(1).setInternalBlockingPoolSize(1));
     vertx.setPeriodic(60*1000,id-> {
+      //删除没有连接的用户
       List<String> list = new LinkedList<>();
       tokenMap.forEach((k, v)->{
         if(v.getConnections()==0){
@@ -51,9 +46,30 @@ public class Center {
         }
       });
       list.forEach(v->tokenMap.remove(v));
-      }
-    );
+      //删除超时的slave
+      List<Slave> list1 = new LinkedList<>();
+      Long current = new Date().getTime();
+      hosts.forEach((k,v)->{
+        if(current-v>3*60*1000){
+          list1.add(k);
+        }
+      });
+      list1.forEach(v-> hosts.remove(v));
+    });
     vertx.createHttpServer().requestHandler(req -> {
+      if(req.method()== HttpMethod.OPTIONS){
+        req.response().putHeader("Access-Control-Allow-Origin",req.getHeader("origin"));
+        req.response().putHeader("Access-Control-Allow-Credentials","true");
+        req.response().putHeader("Access-Control-Allow-Methods","GET, POST, PUT, DELETE, OPTIONS");
+        req.response().putHeader("Access-Control-Allow-Headers","DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type");
+        req.response().putHeader("Access-Control-Max-Age","1728000");
+        req.response().putHeader("Content-Type","text/plain charset=UTF-8");
+        req.response().setStatusCode(204).end();
+        return;
+      }
+      req.response().putHeader("Access-Control-Allow-Origin",req.getHeader("origin"));
+      req.response().putHeader("Access-Control-Allow-Credentials","true");
+
       System.out.println("[Req]:" + req.path()+"?" + req.query());
       switch (req.path()) {
         // login?user=&pass=
@@ -78,25 +94,22 @@ public class Center {
             user.setToken(token);
           }
           req.response().putHeader("x-token",user.getToken()).putHeader("x-salt",args[4]);
-          int i =0;
-          for (Slave host : hosts) {
-            req.response().putHeader("x-host" + i, host.toString());
-            i++;
+          JsonArray array = new JsonArray();
+          for (Slave host : hosts.keySet()) {
+            array.add(host.toJson());
           }
           System.out.println("Client["+user.getToken()+"] login");
-          req.response().end();
+          req.response().end(new JsonObject().put("token",user.getToken()).put("hosts",array).toBuffer());
         }
         break;
         // hosts?god=
         case "/hosts": {
           if (args[2].equals(req.getParam("god"))) {
-            int i =0;
-            for (Slave host : hosts) {
-              String hostStr = host.getHost() + "+" + host.getPort();
-              req.response().putHeader("x-host" + i, hostStr);
-              i++;
+            JsonArray array = new JsonArray();
+            for (Slave host : hosts.keySet()) {
+              array.add(host.toJson());
             }
-            req.response().end();
+            req.response().end(array.toBuffer());
             return;
           }else{
             req.response().setStatusCode(500).end();
@@ -105,11 +118,10 @@ public class Center {
         break;
         // slave?slave=&name=&port=
         case "/slave": {
-          if (!req.getParam("slave").equals(args[3])) {
-            req.response().end();
-          } else {
-            hosts.add(new Slave(req.remoteAddress().host(), Integer.valueOf(req.getParam("port")),req.getParam("name")));
-            req.response().end();
+          req.response().end();
+          if (req.getParam("slave").equals(args[3])) {
+            final Slave slave = new Slave(req.remoteAddress().host(), Integer.valueOf(req.getParam("port")), req.getParam("name"));
+            hosts.put(slave,new Date().getTime());
           }
         }
         break;

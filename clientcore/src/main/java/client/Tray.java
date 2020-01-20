@@ -4,15 +4,17 @@ import co.zzyun.wsocks.client.core.Client;
 import dorkbox.systemTray.Menu;
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.SystemTray;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 
+import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Base64;
 
 public class Tray {
   private  static SystemTray systemTray = SystemTray.get();
@@ -26,7 +28,7 @@ public class Tray {
     }
   }
 
-  static void initTray(EventBus eventBus) {
+  static void initTray() {
     systemTray.setTooltip("WSocks");
     systemTray.setImage(LT_GRAY_TRAIN);
     systemTray.setStatus("无操作");
@@ -34,7 +36,13 @@ public class Tray {
 
     MenuItem openEntry = new MenuItem("打开", event->{
       try {
-        Desktop.getDesktop().browse(new URI("http://client.zzyun.co/index.html"));
+        String user = current.getString("user");
+        String pass = current.getString("pass");
+        if(user!=null && pass!=null){
+          String encode = Base64.getEncoder().encodeToString(new JsonObject().put("user",user).put("pass",pass).toString().getBytes());
+          Desktop.getDesktop().browse(new URI("http://www.zzyun.co/client/index.html?code="+encode));
+        }else
+          Desktop.getDesktop().browse(new URI("http://www.zzyun.co/client/index.html"));
       } catch (IOException | URISyntaxException e) {
         e.printStackTrace();
       }
@@ -42,11 +50,42 @@ public class Tray {
     mainMenu.add(openEntry);
     MenuItem reconnect = new MenuItem("重新连接",event->{
       systemTray.setStatus("正在重新连接...");
-      eventBus.send("client-connect",current);
-      Client.client.reconnect(current.getString("host"),current.getInteger("port"),"websocket");
+      Client.client.reconnect(current.getString("token"),current.getString("host"),current.getInteger("port"),"websocket").setHandler((e)->{
+        if(e.succeeded()){
+          systemTray.setStatus(current.getString("name"));
+        }else{
+          systemTray.setStatus("连接失败");
+        }
+      });
     });
     mainMenu.add(reconnect);
-    MenuItem proxySettingEntry = new MenuItem("PAC代理",(event)->{
+    final MenuItem proxySettingEntry = new MenuItem("PAC代理");
+    proxySettingEntry.setCallback((event)->{
+      if(System.getProperty("os.name").startsWith("Windows")){
+        if(proxySettingEntry.getText().equals("PAC代理")){
+          try {
+            WinRegistry.writeStringValue(WinRegistry.HKEY_CURRENT_USER
+              ,"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+              ,"AutoConfigURL","http://localhost:1078/global");
+          } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null,"设置全局代理失败,"+e.getLocalizedMessage());
+          }
+          proxySettingEntry.setText("全局代理");
+        }else{
+          try {
+            WinRegistry.writeStringValue(WinRegistry.HKEY_CURRENT_USER
+              ,"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+              ,"AutoConfigURL","http://localhost:1078/pac");
+          } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null,"设置PAC失败,"+e.getLocalizedMessage());
+          }
+          proxySettingEntry.setText("PAC代理");
+        }
+      }else{
+        JOptionPane.showMessageDialog(null,"Windows Only");
+      }
 
     });
     mainMenu.add(proxySettingEntry);

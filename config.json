@@ -1,10 +1,14 @@
 {
-  "name": "zz1-LA",
+  "id": "59",
   "lowendbox": true,
-  "login": 1889,
+  "host": "194.147.35.175",
+  "login": 1089,
   "maxWaitSnd": 8000,
   "WndSize": 256,
   "mtu": 1200,
-  "slave": "urmyslave",
-  "center": "http://www.zzyun.co:7771"
+  "center": {
+    "host": "www.zzyun.co",
+    "port": 80
+  }
 }
+

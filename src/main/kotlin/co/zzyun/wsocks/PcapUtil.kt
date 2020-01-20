@@ -20,7 +20,7 @@ object PcapUtil {
   private lateinit var srcMacAddress: MacAddress
   private lateinit var gatewayMacAddress: MacAddress
   private lateinit var nif: PcapNetworkInterface
-  lateinit var sendHandle: PcapHandle
+  private lateinit var sendHandle: PcapHandle
   fun initPcap(srcMacAddress: String, gatewayMacAddress: String) {
     PcapUtil.srcMacAddress = MacAddress.getByName(srcMacAddress, ":")
     PcapUtil.gatewayMacAddress = MacAddress.getByName(gatewayMacAddress, ":")

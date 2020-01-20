@@ -15,8 +15,8 @@ fun main(args: Array<String>) {
   val serverImpl = WebSocketRecv()
   val vertxOptions = VertxOptions()
   if(serverConfig.getBoolean("lowendbox")){
-    vertxOptions.setEventLoopPoolSize(1)
-      .setWorkerPoolSize(1)
+    vertxOptions.setEventLoopPoolSize(2)
+      .setWorkerPoolSize(2)
       .internalBlockingPoolSize = 1
   }
   Vertx.vertx(vertxOptions.setFileSystemOptions(FileSystemOptions()

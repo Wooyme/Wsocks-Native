@@ -3,6 +3,7 @@ package co.zzyun.wsocks.client.core;
 import client.Tray;
 import co.zzyun.wsocks.client.core.client.BaseClient;
 import co.zzyun.wsocks.data.UserInfo;
+import io.netty.channel.local.LocalAddress;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -12,6 +13,7 @@ import io.vertx.core.file.FileSystemOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.net.NetClientOptions;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
@@ -41,7 +43,22 @@ public class Client {
       e.printStackTrace();
       return null;
     }
-
+    final String pac;
+    try {
+      InputStream is = Client.class.getResourceAsStream("/gfwlist.pac");
+      pac = IOUtils.toString(is, Charset.defaultCharset());
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+    final String global;
+    try {
+      InputStream is = Client.class.getResourceAsStream("/global.pac");
+      global = IOUtils.toString(is, Charset.defaultCharset());
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
     vertx.createHttpServer().requestHandler(req -> {
       if(req.method()== HttpMethod.OPTIONS){
         req.response().putHeader("Access-Control-Allow-Origin",req.getHeader("origin"));
@@ -58,16 +75,15 @@ public class Client {
       switch (req.path()) {
         case "/start": {
           if (!deployId.isEmpty()) {
-            vertx.undeploy(deployId);
+            req.response().end();
+            return;
           }
-          String centerHost = req.getParam("center_host");
-          String centerPort = req.getParam("center_port");
           String user = req.getParam("user");
           String pass = req.getParam("pass");
-          client = new BaseClient(centerHost,Integer.parseInt(centerPort),new UserInfo(user,pass,-1,-1));
+          Tray.setCurrent("user",user);
+          Tray.setCurrent("pass",pass);
+          client = new BaseClient(new UserInfo(user,pass,-1,-1));
           vertx.deployVerticle(client, new DeploymentOptions().setConfig(new JsonObject()
-            .put("center.host", centerHost)
-            .put("center.port", Integer.valueOf(centerPort))
             .put("user.info", new JsonObject().put("user", user).put("pass", pass))), result -> {
             if (result.failed())
               req.response().end(result.cause().getMessage());
@@ -78,13 +94,28 @@ public class Client {
           });
         }
         break;
+        case "/stop":{
+          if(!deployId.isEmpty()){
+            vertx.undeploy(deployId);
+            req.response().end();
+          }
+        }
+        break;
         case "/connect": {
-          Tray.setStatus(req.getParam("name"));
+          Tray.setCurrent("token",req.getParam("token"));
           Tray.setCurrent("name",req.getParam("name"));
           Tray.setCurrent("host",req.getParam("host"));
           Tray.setCurrent("port",Integer.parseInt(req.getParam("port")));
           Tray.setCurrent("type",req.getParam("type"));
-          client.reconnect(req.getParam("host"),Integer.parseInt(req.getParam("port")),req.getParam("host"));
+          client.reconnect(req.getParam("token"),req.getParam("host"),Integer.parseInt(req.getParam("port")),req.getParam("type")).setHandler(e->{
+            if(e.succeeded()){
+              Tray.setStatus(req.getParam("name"));
+              req.response().end();
+            }else{
+              Tray.setStatus("连接失败");
+              req.response().end(e.cause().getLocalizedMessage());
+            }
+          });
         }
         break;
         case "/status": {
@@ -95,12 +126,12 @@ public class Client {
           }
         }
         break;
-        case "/hosts":{
-          if (deployId.isEmpty()) {
-            req.response().end();
-          }else {
-            req.response().end(client.getHosts().toString());
-          }
+        case "/pac":{
+          req.response().end(pac);
+        }
+        break;
+        case "/global":{
+          req.response().end(global);
         }
         break;
         default:{

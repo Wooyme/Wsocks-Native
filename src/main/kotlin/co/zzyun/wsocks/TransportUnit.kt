@@ -1,22 +1,24 @@
 package co.zzyun.wsocks
 
 import co.zzyun.wsocks.data.*
+import co.zzyun.wsocks.server.api.CenterApi
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpServerRequest
+import io.vertx.core.net.NetClientOptions
 import io.vertx.core.net.NetSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.*
 import kotlin.collections.HashMap
 
-class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val maxWaitSnd:Int, private val token:String, private val httpClient:HttpClient, private val centerUrl:String):AbstractVerticle() {
+class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val maxWaitSnd:Int, private val token:String, private val httpClient:HttpClient, private val centerApi: CenterApi):AbstractVerticle() {
   companion object {
       private val debug = System.getProperty("ws.debug")?.toBoolean()?:false
       private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
   }
-  private val netClient by lazy { vertx.createNetClient() }
+  private val netClient by lazy { vertx.createNetClient(NetClientOptions().setConnectTimeout(120*1000)) }
   private val conMap = HashMap<String,NetSocket>()
   private var timerID:Long = 0L
   private var heartTimerID:Long = 0L
@@ -45,14 +47,14 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
       }
     }
     this.heartTimerID = vertx.setPeriodic(5*1000){
-      //1分钟未收到任何数据则关闭这个单元
+      //10s未收到任何数据则关闭这个单元
       if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
         this.stop()
       }
     }
 
     this.updateTimerID = vertx.setPeriodic(6*60*1000){
-      this.httpClient.getAbs("$centerUrl/update?token=$token&usage=$usage"){}.end()
+      this.centerApi.update(token,usage)
       this.usage = 0
     }
   }
@@ -66,8 +68,8 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
     vertx.cancelTimer(heartTimerID)
     unitMap.remove(kcp.conv)
     kcp.clean()
-    this.httpClient.getAbs("$centerUrl/offline?token=$token"){}.end()
-    this.httpClient.getAbs("$centerUrl/update?token=$token&usage=$usage"){}.end()
+    this.centerApi.leave(token)
+    this.centerApi.update(token,usage)
     this.onStop?.invoke()
   }
 
@@ -76,7 +78,6 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
   }
 
   private fun handle(buffer:Buffer){
-    println("[Flag:${buffer.getIntLE(0)}]:${buffer.length()}")
     when (buffer.getIntLE(0)) {
       Flag.CONNECT.ordinal -> clientConnectHandler(ClientConnect(key, buffer))
       Flag.RAW.ordinal -> {
@@ -85,11 +86,11 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
       Flag.DNS.ordinal -> clientDNSHandler(DnsQuery(key, buffer))
       Flag.EXCEPTION.ordinal -> clientExceptionHandler(Exception(key, buffer))
       Flag.HEART.ordinal->{
-        this.lastAccessTs = Date().time
         kcp.Send(heart)
       } // 返回一个heart
       else -> println(buffer.getIntLE(0))
     }
+    this.lastAccessTs = Date().time
   }
 
 

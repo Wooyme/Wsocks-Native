@@ -2,6 +2,8 @@ package co.zzyun.wsocks.data;
 
 import io.vertx.core.json.JsonObject;
 
+import java.util.Date;
+
 public class Slave {
   private String host;
   private int port;
@@ -17,6 +19,8 @@ public class Slave {
     this.port = port;
     this.name = name;
   }
+
+
 
   public String getHost() {
     return host;
@@ -40,7 +44,7 @@ public class Slave {
   }
 
   public JsonObject toJson(){
-    return new JsonObject().put("host",host).put("port",port);
+    return new JsonObject().put("host",host).put("port",port).put("name",name);
   }
 
   @Override
@@ -51,7 +55,7 @@ public class Slave {
   @Override
   public boolean equals(Object obj) {
     if(obj instanceof Slave)
-      return this.hashCode()==obj.hashCode();
+      return this.name.equals(((Slave) obj).name);
     else
       return false;
   }

@@ -1,23 +1,25 @@
 package co.zzyun.wsocks.server.receiver
 
 import co.zzyun.wsocks.KCP
-import co.zzyun.wsocks.data.RSAUtil
 import co.zzyun.wsocks.server.sender.PcapSender
 import co.zzyun.wsocks.server.sender.WebSocketSender
 import io.vertx.core.http.HttpServer
+import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.http.ServerWebSocket
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.SocketAddress
+import java.util.*
 
 class WebSocketRecv:AbstractReceiver<ServerWebSocket>() {
-  private val httpServer:HttpServer by lazy { vertx.createHttpServer() }
+  private val httpServer:HttpServer by lazy { vertx.createHttpServer(HttpServerOptions().setTcpNoDelay(true)) }
   override fun initServer(onConnect: (String,String,ServerWebSocket?, SocketAddress,Long,(KCP?)->Unit) -> Unit) {
     if(config().getJsonObject("pcap")!=null){
       senderMap["pcap"]=PcapSender(config().getJsonObject("pcap"))
     }
     senderMap["websocket"]=WebSocketSender()
     httpServer.websocketHandler { sock->
-      val info = JsonObject(RSAUtil.decrypt(sock.headers()["info"]))
+
+      val info = JsonObject(String(Base64.getDecoder().decode(sock.headers()["info"])))
       val token = info.getString("token")
       val host = info.getString("host")
       val port = info.getInteger("port")
@@ -28,7 +30,6 @@ class WebSocketRecv:AbstractReceiver<ServerWebSocket>() {
         onConnect(recvType,token,sock,sock.remoteAddress(),conv){
           if(it!=null){
             afterLogin(sock,it)
-            println("Client:[$token]登录成功")
           }else{
             sock.reject(500)
           }
@@ -37,7 +38,6 @@ class WebSocketRecv:AbstractReceiver<ServerWebSocket>() {
         onConnect(recvType,token,sock, SocketAddress.inetSocketAddress(port,host),conv){
           if(it!=null){
             afterLogin(sock,it)
-            println("Client:[$token]登录成功")
           }else{
             sock.reject(500)
           }
