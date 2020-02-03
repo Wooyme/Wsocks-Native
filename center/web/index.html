@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="author" content="Kodinger">
   <title>SuperEngine-登录</title>
-  <link rel="stylesheet" type="text/css" href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.2/css/all.css">
   <link rel="stylesheet" type="text/css" href="css/my-login.css">
   <link href="css/mdb.min.css" rel="stylesheet">
@@ -70,8 +70,8 @@
   </div>
 </section>
 
-<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-<script src="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<script src="js/jquery-3.4.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
 <script src="js/my-login.js"></script>
 <script>
   $.urlParam = function (name) {
@@ -113,7 +113,7 @@
         console.log("success!");
       },
       error: function (data) {
-        alert("登录失败:" + data);
+        alert("登录失败:" + JSON.stringify(data));
         $("#login").prop('disabled', false);
       }
     });

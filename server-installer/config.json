@@ -1,0 +1,20 @@
+{
+  "id": "55",
+  "lowendbox": true,
+  "host": "2.58.231.64",
+  "login": 1089,
+  "maxWaitSnd": 8000,
+  "WndSize": 256,
+  "mtu": 1200,
+  "center": {
+    "host": "www.zzyun.co",
+    "port": 80
+  },
+  "pcap": {
+    "ip": "2.58.231.64",
+    "port": 9099,
+    "srcMac": "00:15:5d:b7:05:de",
+    "gatewayMac": "00:1c:b0:3d:3c:00"
+  }
+}
+
