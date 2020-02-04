@@ -101,11 +101,11 @@ public class Tray {
     mainMenu.add(proxySettingEntry);
     final MenuItem getProxyURL = new MenuItem("代理链接",event->{
       try {
-        String localHost = InetAddress.getLocalHost().getHostAddress();
-
-        JOptionPane.showInputDialog(null,"代理链接","http://"+localHost+":1078/pac");
-      } catch (UnknownHostException e) {
+        String localHost = IPUtils.getFirstNonLoopbackAddress(true,false).getHostAddress();
+        JOptionPane.showInputDialog(null,"代理链接","http://"+localHost+":1078/pac?host="+localHost);
+      } catch (Exception e) {
         e.printStackTrace();
+        JOptionPane.showMessageDialog(null,"获取代理链接失败");
       }
     });
     mainMenu.add(getProxyURL);
@@ -115,7 +115,7 @@ public class Tray {
           WinRegistry.deleteValue(WinRegistry.HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", "AutoConfigURL");
         } catch (IllegalAccessException | InvocationTargetException e) {
           e.printStackTrace();
-          JOptionPane.showMessageDialog(null, "重置代理设置失败" + e.getLocalizedMessage());
+          JOptionPane.showMessageDialog(null, "清除代理设置失败" + e.getLocalizedMessage());
         }
       }
       System.exit(0);

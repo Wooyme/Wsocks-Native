@@ -127,11 +127,19 @@ public class Client {
         }
         break;
         case "/pac":{
-          req.response().end(pac);
+          if(req.getParam("host")!=null){
+            req.response().end(pac.replace("SOCKS5 127.0.0.1:1080","SOCKS "+req.getParam("host")+":1080"));
+          }else {
+            req.response().end(pac);
+          }
         }
         break;
         case "/global":{
-          req.response().end(global);
+          if(req.getParam("host")!=null){
+            req.response().end(global.replace("SOCKS5 127.0.0.1:1080","SOCKS "+req.getParam("host")+":1080"));
+          }else {
+            req.response().end(global);
+          }
         }
         break;
         default:{
