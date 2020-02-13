@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SuperEngine-Login</title>
+  <link href="http://lib.baomitu.com/uikit/3.2.3/css/uikit.min.css" rel="stylesheet">
+</head>
+<body>
+<nav class="uk-navbar uk-navbar-container">
+  <div class="uk-navbar-left">
+    <ul class="uk-navbar-nav">
+      <li class="uk-active"><a href="#">SuperEngine</a></li>
+    </ul>
+  </div>
+</nav>
+<div style="margin-top: 40px;" class="uk-flex uk-flex-center">
+  <div style="width: 35%" class="uk-card uk-card-default uk-card-large">
+    <div class="uk-card-header uk-flex uk-flex-center">
+      <div class="uk-card-title">SuperEngine</div>
+    </div>
+    <div class="uk-card-body">
+      <div class="uk-margin">
+        <input id="username" class="uk-input" type="text" placeholder="Username">
+      </div>
+      <div class="uk-margin">
+        <div class="uk-flex uk-flex-right">
+          <a href="http://www.zzyun.co/my-account/lost-password/">Forgot password?</a>
+        </div>
+        <input id="password" class="uk-input" type="password" placeholder="Password">
+      </div>
+    </div>
+    <div class="uk-card-footer uk-flex uk-flex-between">
+      <a class="uk-button uk-button-default" href="http://www.zzyun.co/my-account/lost-password/">Register</a>
+      <button id="login" class="uk-button uk-button-primary" onclick="login()" disabled>Login</button>
+    </div>
+  </div>
+</div>
+<div id="fail-modal" class="uk-modal">
+  <div class="uk-modal-dialog uk-modal-body">
+    <h2 class="uk-modal-title">Sorry,Login failed</h2>
+    <p id="fail-modal-body"></p>
+    <p class="uk-text-right">
+      <button class="uk-button uk-button-default uk-modal-close" type="button">Cancel</button>
+    </p>
+  </div>
+</div>
+<script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
+<script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
+<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script>
+  $.urlParam = function (name) {
+    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results == null) {
+      return null;
+    }
+    return decodeURI(results[1]) || 0;
+  };
+  (function (e) {
+    $("#login").html("Login").prop("disabled", false);
+    var user = $.urlParam("user");
+    var pass = $.urlParam("pass");
+    var code = $.urlParam("code");
+    if (code != null) {
+      var json = JSON.parse(atob(code));
+      user = json['user'];
+      pass = json['pass'];
+    }
+    if (user != null && user !== "") {
+      $("#username").val(user);
+      $("#password").val(pass);
+      if (!navigator.userAgent.match(/Android/i))
+        login()
+    }
+  })();
+
+  function login() {
+    var user = $('#username').val();
+    var pass = $('#password').val();
+    $.ajax({
+      url: encodeURI("http://www.zzyun.co/wp-json/jwt-auth/v1/token"),
+      type: 'POST',
+      dataType: 'json',
+      contentType: "application/json; charset=utf-8",
+      data: JSON.stringify({"username": user, "password": pass}),
+      success: function (data) {
+        var token = data["token"];
+        var code = btoa(JSON.stringify({"user": user, "pass": pass}));
+        alert("CODE:"+code);
+        redirect(encodeURI("home/index.html?code=" + code + "&token=" + token));
+      },
+      error: function (data) {
+        if(data.readyState===0){
+          login();
+        }else {
+          $("#fail-modal-body").html("<p>" + JSON.stringify(data) + "</p>");
+          UIkit.modal($("#fail-modal")).show();
+          $("#login").prop('disabled', false);
+        }
+      }
+    });
+    $("#login").prop('disabled', true);
+  }
+
+  function redirect(uri) {
+    if (navigator.userAgent.match(/Android/i))
+      document.location = uri;
+    else
+      window.location.replace(uri);
+  }
+</script>
+</body>
+</html>

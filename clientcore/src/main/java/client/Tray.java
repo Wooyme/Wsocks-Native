@@ -7,10 +7,10 @@ import dorkbox.systemTray.SystemTray;
 import io.vertx.core.json.JsonObject;
 
 import javax.swing.*;
-import java.awt.*;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.*;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.Base64;
 
 public class Tray {
@@ -44,17 +44,13 @@ public class Tray {
     Menu mainMenu = systemTray.getMenu();
 
     MenuItem openEntry = new MenuItem("打开", event -> {
-      try {
-        String user = current.getString("user");
-        String pass = current.getString("pass");
-        if (user != null && pass != null) {
-          String encode = Base64.getEncoder().encodeToString(new JsonObject().put("user", user).put("pass", pass).toString().getBytes());
-          Desktop.getDesktop().browse(new URI("http://www.zzyun.co/client/index.html?code=" + encode));
-        } else
-          Desktop.getDesktop().browse(new URI("http://www.zzyun.co/client/index.html"));
-      } catch (IOException | URISyntaxException e) {
-        e.printStackTrace();
-      }
+      String user = current.getString("user");
+      String pass = current.getString("pass");
+      if (user != null && pass != null) {
+        String encode = Base64.getEncoder().encodeToString(new JsonObject().put("user", user).put("pass", pass).toString().getBytes());
+        Launcher.openWindow("http://www.zzyun.co/client/v2/index.html?code="+encode);
+      } else
+        Launcher.openWindow("http://www.zzyun.co/client/v2/index.html");
     });
     mainMenu.add(openEntry);
     MenuItem reconnect = new MenuItem("重新连接", event -> {

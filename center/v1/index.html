@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="author" content="Kodinger">
+  <meta name="juicyads-site-verification" content="2e7e10bf1119578a5ea1715136a45e8e">
   <title>SuperEngine-登录</title>
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.2/css/all.css">
@@ -32,12 +33,9 @@
   </nav>
 </header>
 <section class="h-100">
-  <div class="container h-100">
+  <div class="container h-100"  style="padding-top:140px;">
     <div class="row justify-content-md-center h-100">
       <div class="card-wrapper">
-        <div class="brand">
-          <img src="img/logo.jpg">
-        </div>
         <div class="card fat">
           <div class="card-body">
             <h4 class="card-title">登录</h4>
@@ -56,8 +54,8 @@
               <input id="password" type="password" class="form-control" name="password" required data-eye>
             </div>
             <div class="form-group no-margin">
-              <button id="login" class="btn btn-primary btn-block" onclick="login()">
-                登录
+              <button id="login" class="btn btn-primary btn-block" onclick="login()" disabled>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
               </button>
             </div>
             <div class="margin-top20 text-center">
@@ -69,11 +67,11 @@
     </div>
   </div>
 </section>
-
 <script src="js/jquery-3.4.1.min.js"></script>
 <script src="js/bootstrap.min.js"></script>
 <script src="js/my-login.js"></script>
 <script>
+
   $.urlParam = function (name) {
     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
     if (results == null) {
@@ -82,6 +80,7 @@
     return decodeURI(results[1]) || 0;
   };
   window.onload = function (e) {
+    $("#login").html("登录").prop("disabled",false);
     var user = $.urlParam("user");
     var pass = $.urlParam("pass");
     var code = $.urlParam("code");
@@ -93,7 +92,8 @@
     if (user != null && user !== "") {
       $("#email").val(user);
       $("#password").val(pass);
-      login()
+      if (!navigator.userAgent.match(/Android/i))
+        login()
     }
   };
 
@@ -109,7 +109,7 @@
       success: function (data) {
         var token = data["token"];
         var code = btoa(JSON.stringify({"user":user,"pass":pass}));
-        redirect(encodeURI("home.html?code=" + code + "&token=" + token));
+        redirect(encodeURI("home/index.html?code=" + code + "&token=" + token));
         console.log("success!");
       },
       error: function (data) {

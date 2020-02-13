@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>SuperEngine-超级路由器</title>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.2/css/all.css">
+  <link href="../css/bootstrap.min.css" rel="stylesheet">
+  <link href="../css/mdb.min.css" rel="stylesheet">
+  <link href="../css/style.min.css" rel="stylesheet">
+  <script type="text/javascript" src="../js/jquery-3.4.1.min.js"></script>
+</head>
+
+<body>
+<script>
+  function createCard(name, host, port) {
+    var img;
+    if (name.includes("RU")) {
+      img = "../img/rus.jpeg";
+    }
+    if (name.includes("LA")) {
+      img = "../img/us.jpeg";
+    }
+    return "<div class=\"col-lg-4 col-md-12 mb-4\">\n" +
+      "            <div class=\"card\" style=\"height:372px;\">\n" +
+      "              <div class=\"view overlay\">\n" +
+      "                  <img src=\"" + img + "\" class=\"card-img-top\">\n" +
+      "              </div>\n" +
+      "              <div class=\"card-body\">\n" +
+      "                <h4 class=\"card-title\">" + name + "</h4>\n" +
+      "                <div class=\"btn-group\" role=\"group\" aria-label=\"Basic example\">\n" +
+      "                  <button type=\"button\" class=\"btn btn-primary\" onclick=\"connect('" + name + "','" + host + "'," + port + ")\">常规连接</button>\n" +
+      "                  <button type=\"button\" class=\"btn btn-primary\" onclick=\"connectUdp('" + name + "','" + host + "'," + port + ")\">备用连接</button>\n" +
+      "                </div>\n" +
+      "              </div>\n" +
+      "            </div>\n" +
+      "          </div>";
+  }
+  $.ajax({
+    url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=17"),
+    type: 'GET',
+    dataType: 'json',
+    success: function (posts) {
+      var endpoints = [];
+      for (var i = 0; i < posts.length; i++) {
+        var obj = posts[i];
+        console.log(obj);
+        console.log((new Date()) - (new Date(obj['modified'])));
+        if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
+          var title = obj['title']['rendered'];
+          var res = obj['content']['rendered'].match(/[0-9\.]+/g);
+          var html = createCard(title, res[0], res[1]);
+          endpoints.push(html);
+          window.endpoints = endpoints;
+        }
+      }
+    },
+    error: function (data) {
+      alert("获取节点失败:" + data);
+    }
+  });
+</script>
+<!--Main Navigation-->
+<header>
+  <!-- Navbar -->
+  <nav class="navbar fixed-top navbar-expand-lg navbar-light white scrolling-navbar">
+    <div class="container">
+
+      <!-- Brand -->
+      <a class="navbar-brand waves-effect" href="#" target="_blank">
+        <strong class="blue-text">SuperEngine</strong>
+      </a>
+
+      <!-- Collapse -->
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+              aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Links -->
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+        <!-- Left -->
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item active">
+            <a class="nav-link waves-effect" href="#">主页
+              <span class="sr-only">(current)</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="#">我的账户</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="../info.html">相关信息</a>
+          </li>
+        </ul>
+
+        <!-- Right -->
+        <ul class="navbar-nav nav-flex-icons">
+          <li class="nav-item">
+            <a href="#" class="nav-link waves-effect" target="_blank">
+              <i class="fab fa-twitter"></i>
+            </a>
+          </li>
+        </ul>
+
+      </div>
+
+    </div>
+  </nav>
+  <!-- Navbar -->
+
+</header>
+<!--Main Navigation-->
+
+<!--Main layout-->
+<main class="mt-5 pt-5">
+  <div class="container">
+    <section class="text-center">
+      <p id="my-loading">节点加载中
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
+      </p>
+      <div id="list" class="row mb-4 wow fadeIn">
+        <div class="col-lg-4 col-md-12 mb-4">
+          <div class="card" style="height:372px;">
+            <div class="view overlay">
+              <script type="text/javascript">
+                var ad_idzone = "3706069",
+                  ad_width = "300",
+                  ad_height = "250"
+              </script>
+              <script type="text/javascript" src="https://a.exdynsrv.com/ads.js"></script>
+            </div>
+            <div class="card-body">
+              <h4 class="card-title">↑↑广告↑↑</h4>
+              <p>点击图片支持我们！</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<div class="modal fade" id="success" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">提示</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        连接成功
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript" src="../js/popper.min.js"></script>
+<script type="text/javascript" src="../js/bootstrap.min.js"></script>
+<script type="text/javascript" src="../js/mdb.min.js"></script>
+<script type="text/javascript">
+  // Animations initialization
+  new WOW().init();
+  $.urlParam = function (name) {
+    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results == null) {
+      return null;
+    }
+    return decodeURI(results[1]) || 0;
+  };
+  var token;
+  (function() {
+    var code = $.urlParam("code");
+    token = $.urlParam("token");
+    if (code == null || token == null) {
+      alert("登录异常");
+      window.location.href = "../login.html";
+      return;
+    }
+    var json = JSON.parse(atob(code));
+    var user = json['user'];
+    var pass = json['pass'];
+    $.get(encodeURI("http://localhost:1078/start?center_host=www.zzyun.co&center_port=1777&user=" + user + "&pass=" + pass), function (data) {
+      if (data !== '') {
+        alert(data)
+      }
+    });
+    var timerId;
+    timerId = setInterval(function () {
+      if (window.endpoints) {
+        for (var i = 0; i < window.endpoints.length; i++)
+          $('#list').append(window.endpoints[i]);
+        $("#my-loading").css("display", "none");
+        clearInterval(timerId);
+      }
+    }, 500);
+  })();
+
+
+  function connect(name, host, port) {
+    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=websocket&name=" + name, function (data) {
+      if (data != null && data !== '') {
+        alert(data);
+      } else {
+        $('#success').modal();
+      }
+    });
+  }
+
+  function connectUdp(name, host, port) {
+    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=udp&name=" + name, function (data) {
+      if (data != null && data !== '') {
+        alert(data);
+      } else {
+        $('#success').modal();
+      }
+    });
+  }
+</script>
+</body>
+
+</html>

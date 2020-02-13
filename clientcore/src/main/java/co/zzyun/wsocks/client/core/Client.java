@@ -35,14 +35,6 @@ public class Client {
       .setFileSystemOptions(new FileSystemOptions()
         .setFileCachingEnabled(false)
         .setClassPathResolvingEnabled(false)).setBlockedThreadCheckInterval(100000000000L));
-    final String index;
-    try {
-      InputStream is = Client.class.getResourceAsStream("/index.html");
-      index = IOUtils.toString(is, Charset.defaultCharset());
-    } catch (IOException e) {
-      e.printStackTrace();
-      return null;
-    }
     final String pac;
     try {
       InputStream is = Client.class.getResourceAsStream("/gfwlist.pac");
@@ -142,9 +134,6 @@ public class Client {
           }
         }
         break;
-        default:{
-          req.response().end(index);
-        }
       }
     }).listen(1078, r -> {
       if (r.failed()) r.cause().printStackTrace();
