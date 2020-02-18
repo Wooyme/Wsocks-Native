@@ -48,9 +48,9 @@ public class Tray {
       String pass = current.getString("pass");
       if (user != null && pass != null) {
         String encode = Base64.getEncoder().encodeToString(new JsonObject().put("user", user).put("pass", pass).toString().getBytes());
-        Launcher.openWindow("http://www.zzyun.co/client/v2/index.html?code="+encode);
+        Launcher.openWindow("http://www.zzyun.co/client/desktop/index.html?code="+encode);
       } else
-        Launcher.openWindow("http://www.zzyun.co/client/v2/index.html");
+        Launcher.openWindow("http://www.zzyun.co/client/desktop/index.html");
     });
     mainMenu.add(openEntry);
     MenuItem reconnect = new MenuItem("重新连接", event -> {

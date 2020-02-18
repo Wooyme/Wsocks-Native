@@ -209,10 +209,7 @@
         clearInterval(timerId);
       }
     }, 500);
-    if(version!=="211")
-      $("#update").modal();
   })();
-
 
   function connect(name, host, port) {
     $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=websocket&name=" + name, function (data) {
@@ -234,15 +231,6 @@
     });
   }
 </script>
-<script type="text/javascript">
-  var ad_idzone = "3712043",
-    ad_width = "300",
-    ad_height = "250"
-</script>
-<script type="text/javascript" src="https://a.exdynsrv.com/ads.js"></script>
-<noscript>
-  <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=3712043&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
-</noscript>
 </body>
 
 </html>

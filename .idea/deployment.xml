@@ -2,11 +2,19 @@
 <project version="4">
   <component name="PublishConfigData">
     <serverData>
-      <paths name="center">
+      <paths name="desktop">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$/center" web="/" />
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/" local="$PROJECT_DIR$/center/desktop" web="/" />
+            <mapping local="$PROJECT_DIR$/common" />
+            <mapping local="$PROJECT_DIR$/clientcore" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="mobile">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/" local="$PROJECT_DIR$/center/mobile" web="/" />
           </mappings>
         </serverdata>
       </paths>
