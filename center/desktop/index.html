@@ -31,7 +31,7 @@
     </div>
     <div class="uk-card-footer uk-flex uk-flex-between">
       <a class="uk-button uk-button-default" href="http://www.zzyun.co/my-account/lost-password/">Register</a>
-      <button id="login" class="uk-button uk-button-primary" onclick="login()" disabled>Login</button>
+      <button id="login" class="uk-button uk-button-primary" onclick="login()">Login</button>
     </div>
   </div>
 </div>
@@ -76,10 +76,10 @@
     if (user != null && user !== "") {
       $("#username").val(user);
       $("#password").val(pass);
-      if (!navigator.userAgent.match(/Android/i))
-        login()
+      login()
     }
   })();
+
   function login() {
     var user = $('#username').val();
     var pass = $('#password').val();
@@ -108,7 +108,7 @@
   }
 
   function redirect(uri) {
-      if(engine){
+      if(window.engine){
         engine.requestBackground(2*60*1000);
       }
       window.location.replace(uri);

@@ -53,15 +53,7 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     kcp.SetMtu(1200)
     kcp.WndSize(256, 256)
     kcp.NoDelay(1, 10, 2, 1)
-    this.heartTimerID = vertx.setPeriodic(2*1000){
-      //8s未收到任何数据则关闭client
-      if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*32){
-        log("连接超时")
-        this.offline()
-      }
-      println("[${Date()}]heartbeat,${Date(lastAccessTs)}")
-      kcp.Send(heart)
-    }
+
     val data = ByteArray(8 * 1024 * 1024)
     this.timerID = vertx.setPeriodic(10) {
       if (!isKcpInitialized) return@setPeriodic
@@ -147,7 +139,7 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     this.netServer = vertx.createNetServer()
   }
 
-  fun reconnect(token:String,remoteHost:String,remotePort:Int,type:String):Future<Void>{
+  fun reconnect(name:String,token:String,remoteHost:String,remotePort:Int,type:String):Future<Void>{
     val fut = Future.future<Void>()
     this.offline()
     this.online()
@@ -171,6 +163,20 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
               kcp.Input(it.bytes)
             }
             initSocksServer(initKcp(conv))
+            this.heartTimerID = vertx.setPeriodic(2*1000){
+              //10s未收到任何数据则关闭client
+              if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
+                log("连接超时")
+                this.reconnect(name,token, remoteHost, remotePort, type).setHandler {
+                  if(it.succeeded())
+                    Tray.setStatus(name)
+                  else{
+                    Tray.setStatus("连接失败")
+                  }
+                }
+              }
+              kcp.Send(heart)
+            }
             fut.complete()
           }){
             log("拒绝连接")
@@ -188,6 +194,20 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
           kcp.Input(it.bytes)
         }
         initSocksServer(initKcp(conv))
+        this.heartTimerID = vertx.setPeriodic(2*1000){
+          //10s未收到任何数据则关闭client
+          if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
+            log("连接超时")
+            this.reconnect(name,token, remoteHost, remotePort, type).setHandler {
+              if(it.succeeded())
+                Tray.setStatus(name)
+              else{
+                Tray.setStatus("连接失败")
+              }
+            }
+          }
+          kcp.Send(heart)
+        }
         fut.complete()
       }){
         fut.fail(it)

@@ -18,7 +18,6 @@ class WebSocketRecv:AbstractReceiver<ServerWebSocket>() {
     }
     senderMap["websocket"]=WebSocketSender()
     httpServer.websocketHandler { sock->
-
       val info = JsonObject(String(Base64.getDecoder().decode(sock.headers()["info"])))
       val token = info.getString("token")
       val host = info.getString("host")

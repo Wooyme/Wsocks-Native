@@ -1,7 +1,9 @@
 #!/bin/bash
 echo "host: $1"
 echo "password: $2"
-sshpass -p "$2" ssh root@$1 'mkdir proxy && apt-get update && apt-get install arping -y && apt-get install openjdk-8-jre -y && apt-get install libpcap-dev -y && apt-get install net-tools -y'
+sshpass -p "$2" ssh root@$1 'mkdir proxy && apt-get update && apt-get install arping -y && apt-get install openjdk-8-jre -y && apt-get install libpcap-dev -y && apt-get install net-tools -y && apt-get install nginx -y'
+sshpass -p "$2" scp default root@$1:/etc/nginx/sites-enabled/default
+sshpass -p "$2" scp 1.json root@$1:/var/www/html/1.json
 ether=$(sshpass -p "$2" ssh root@$1 $'ip route show match 0/0 | awk \'{print $5}\'')
 echo "Ether: $ether"
 src_mac=$(sshpass -p "$2" ssh root@$1 "cat /sys/class/net/$ether/address")

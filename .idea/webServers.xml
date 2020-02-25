@@ -18,6 +18,22 @@
           <option name="port" value="22" />
         </fileTransfer>
       </webServer>
+      <webServer id="4ea71939-14be-4373-bd22-cd457579dfbc" name="v1" url="http://www.zzyun.co">
+        <fileTransfer host="www.zzyun.co" port="22" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="73d3df41-c477-44f2-91a3-2867656a3124" name="v2" url="http://www.zzyun.co">
+        <fileTransfer host="www.zzyun.co" port="22" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
     </option>
   </component>
 </project>

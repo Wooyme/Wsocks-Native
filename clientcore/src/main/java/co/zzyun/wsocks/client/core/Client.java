@@ -99,7 +99,7 @@ public class Client {
           Tray.setCurrent("host",req.getParam("host"));
           Tray.setCurrent("port",Integer.parseInt(req.getParam("port")));
           Tray.setCurrent("type",req.getParam("type"));
-          client.reconnect(req.getParam("token"),req.getParam("host"),Integer.parseInt(req.getParam("port")),req.getParam("type")).setHandler(e->{
+          client.reconnect(req.getParam("name"),req.getParam("token"),req.getParam("host"),Integer.parseInt(req.getParam("port")),req.getParam("type")).setHandler(e->{
             if(e.succeeded()){
               Tray.setStatus(req.getParam("name"));
               req.response().end();
