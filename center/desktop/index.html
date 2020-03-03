@@ -47,6 +47,7 @@
 <script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
 <script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
 <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script src="js/custom.js"></script>
 <script>
   $.urlParam = function (name) {
     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
@@ -92,7 +93,12 @@
       success: function (data) {
         var token = data["token"];
         var code = btoa(JSON.stringify({"user": user, "pass": pass}));
-        redirect(encodeURI("home/index.html?code=" + code + "&token=" + token));
+        if(window.engine){
+          engine.localSave("local.txt",code);
+        }
+        setCookie("code",code,1);
+        setCookie("token",token,1);
+        redirect(encodeURI("home/index.html"));
       },
       error: function (data) {
         if(data.readyState===0){

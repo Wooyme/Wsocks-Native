@@ -2,9 +2,14 @@ package co.zzyun.wsocks.client.core.client
 
 import client.Tray
 import co.zzyun.wsocks.client.core.KCP
+import co.zzyun.wsocks.client.core.client.impl.IClientImpl
+import co.zzyun.wsocks.client.core.client.impl.MemcachedClientImpl
+import co.zzyun.wsocks.client.core.client.impl.WebsocketClientImpl
 import co.zzyun.wsocks.data.*
+import co.zzyun.wsocks.memcached.MemcachedClient
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
+import io.vertx.core.Handler
 import io.vertx.core.MultiMap
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.datagram.DatagramSocket
@@ -24,27 +29,33 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     private val unsupportedBuf = Buffer.buffer().appendByte(0x05.toByte()).appendByte(0x08.toByte())
     private val heart = Buffer.buffer().appendIntLE(Flag.HEART.ordinal).bytes
   }
-  private lateinit var netServer:NetServer
+
+  private lateinit var netServer: NetServer
   private val connectMap = ConcurrentHashMap<String, NetSocket>()
-  private lateinit var udpServer:DatagramSocket
   private lateinit var kcp: KCP
-  private val isKcpInitialized:Boolean get() = this::kcp.isInitialized
+  private val isKcpInitialized: Boolean get() = this::kcp.isInitialized
   private var lastAccessTs = 0L
   private var heartTimerID = 0L
   private var timerID = 0L
-  private val httpClient by lazy { vertx.createHttpClient(HttpClientOptions().setTcpNoDelay(true)) }
-  private var webSocketClient: io.vertx.core.http.WebSocket?=null
+  private lateinit var client:IClientImpl
   var statusMessage = ""
-  private fun log(message:String){
+  private fun log(message: String) {
     statusMessage += "[${Date().toLocaleString()}]: $message\n"
   }
-  private fun initKcp(conv: Long):KCP {
-    kcp = object : KCP(conv) {
+
+  override fun start() {
+    super.start()
+    vertx.eventBus().localConsumer<Buffer>("unit-1"){
+      kcp.Input(it.body().bytes)
+    }
+  }
+
+  private fun initKcp(conv: Long): KCP {
+    kcp = object : KCP(conv,vertx.eventBus()) {
       override fun output(buffer: ByteArray, size: Int) {
         try {
-            webSocketClient?.writeBinaryMessage(Buffer.buffer().appendBytes(buffer,0,size))
-              ?:println("WebSocket is closed")
-        }catch(e:Throwable){
+          client.write((Buffer.buffer().appendBytes(buffer, 0, size)))
+        } catch (e: Throwable) {
           log("远程连接断开")
           offline()
         }
@@ -74,38 +85,6 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     super.stop()
   }
 
-
-  private fun initUdp(remoteHost:String, remotePort:Int):Future<JsonObject>{
-    var reqTimerId = 0L
-    var times = 0
-    val future = Future.future<JsonObject>()
-    this.udpServer.handler {
-      if (reqTimerId!=0L) {
-        val buffer = it.data()
-        val json = try {
-          buffer.toJsonObject()
-        } catch (e: Throwable) {
-          return@handler future.fail(e)
-        }
-        vertx.cancelTimer(reqTimerId)
-        reqTimerId=0L
-        future.complete(json)
-      } else {
-        if (isKcpInitialized) kcp.Input(it.data().bytes)
-      }
-    }
-    log("获取本机公网端口")
-    reqTimerId = vertx.setPeriodic(1000) {
-      if(times>10){
-        vertx.cancelTimer(reqTimerId)
-        future.fail("公网端口请求超时")
-      }
-      this.udpServer.send("GO",remotePort, remoteHost){}
-      times++
-    }
-    return future
-  }
-
   private fun handle(buffer: Buffer) {
     if (buffer.length() < 4) return
     when (buffer.getIntLE(0)) {
@@ -116,111 +95,75 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     this.lastAccessTs = Date().time
   }
 
-  private fun offline(){
+  private fun offline() {
     println("-----------------Offline-----------------")
     log("清空连接...")
     Tray.setStatus("无连接")
-    if(timerID!=0L) vertx.cancelTimer(timerID)
-    if(heartTimerID!=0L) vertx.cancelTimer(heartTimerID)
+    if (timerID != 0L) vertx.cancelTimer(timerID)
+    if (heartTimerID != 0L) vertx.cancelTimer(heartTimerID)
     lastAccessTs = 0L
     if (isKcpInitialized) kcp.clean()
-    if(this::netServer.isInitialized) try { netServer.close() }catch (ignored:Throwable){}
-    try{
-      webSocketClient?.close()
-      webSocketClient = null
-    }catch (ignored:Throwable){}
+    if (this::netServer.isInitialized) try {
+      netServer.close()
+    } catch (ignored: Throwable) {
+    }
+    try {
+      client.stop()
+    } catch (ignored: Throwable) {
+    }
     connectMap.clear()
   }
 
-  private fun online(){
+  private fun online() {
     println("-----------------online-----------------")
     log("启动连接")
-    this.udpServer = vertx.createDatagramSocket()
     this.netServer = vertx.createNetServer()
   }
 
-  fun reconnect(name:String,token:String,remoteHost:String,remotePort:Int,type:String):Future<Void>{
+  fun reconnect(name: String, token: String, remoteHost: String, remotePort: Int, type: String,other:JsonObject): Future<Void> {
+    println("name:$name,remoteHost:$remoteHost,remotePort:$remotePort")
     val fut = Future.future<Void>()
     this.offline()
     this.online()
-    val conv = Date().time/1000
-    val json = JsonObject().put("token",token).put("conv",conv)
-    if(type=="udp"){
-      initUdp(remoteHost,remotePort).setHandler {
-        if(it.failed()){
-          log("公网端口请求超时")
-        }else {
-          log("获取本机公网端口成功 IP:${it.result().getString("host")},端口:${it.result().getInteger("port")}")
-          json.put("recv", "pcap")
-          json.put("host", it.result().getString("host"))
-          json.put("port", it.result().getInteger("port"))
-
-          httpClient.websocket(remotePort,remoteHost,"/chat", MultiMap.caseInsensitiveMultiMap().apply {
-            this["info"] = Base64.getEncoder().encodeToString(json.toString().toByteArray())
-          },{
-            this.webSocketClient = it
-            it.binaryMessageHandler {
-              kcp.Input(it.bytes)
+    val conv = Date().time / 1000
+    val json = other.put("token", token).put("conv", conv)
+    json.put("recv", type)
+    client = when(type){
+      "memcached"->{
+        MemcachedClientImpl(vertx)
+      }
+      else->{
+        WebsocketClientImpl(vertx)
+      }
+    }
+    client.start(name,remoteHost,remotePort,json).setHandler {
+      initSocksServer(initKcp(conv))
+      this.heartTimerID = vertx.setPeriodic(2 * 1000) {
+        //10s未收到任何数据则关闭client
+        if (lastAccessTs != 0L && Date().time - lastAccessTs > 1000 * 10) {
+          this.reconnect(name, token, remoteHost, remotePort, type,other).setHandler {
+            if (it.succeeded())
+              Tray.setStatus(name)
+            else {
+              Tray.setStatus("连接失败")
             }
-            initSocksServer(initKcp(conv))
-            this.heartTimerID = vertx.setPeriodic(2*1000){
-              //10s未收到任何数据则关闭client
-              if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
-                log("连接超时")
-                this.reconnect(name,token, remoteHost, remotePort, type).setHandler {
-                  if(it.succeeded())
-                    Tray.setStatus(name)
-                  else{
-                    Tray.setStatus("连接失败")
-                  }
-                }
-              }
-              kcp.Send(heart)
-            }
-            fut.complete()
-          }){
-            log("拒绝连接")
-            fut.fail(it)
           }
         }
+        kcp.Send(heart)
       }
-    }else{
-      json.put("recv","websocket")
-      httpClient.websocket(remotePort,remoteHost,"/chat", MultiMap.caseInsensitiveMultiMap().apply {
-        this["info"] = Base64.getEncoder().encodeToString(json.toString().toByteArray())
-      },{
-        this.webSocketClient = it
-        it.binaryMessageHandler {
-          kcp.Input(it.bytes)
-        }
-        initSocksServer(initKcp(conv))
-        this.heartTimerID = vertx.setPeriodic(2*1000){
-          //10s未收到任何数据则关闭client
-          if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
-            log("连接超时")
-            this.reconnect(name,token, remoteHost, remotePort, type).setHandler {
-              if(it.succeeded())
-                Tray.setStatus(name)
-              else{
-                Tray.setStatus("连接失败")
-              }
-            }
-          }
-          kcp.Send(heart)
-        }
-        fut.complete()
-      }){
-        fut.fail(it)
-        log("拒绝连接")
-      }
+      client.connected(kcp)
+      fut.complete()
     }
     return fut
   }
 
 
-  private fun initSocksServer(kcp:KCP) {
+  private fun initSocksServer(kcp: KCP) {
     println("Init socks server")
-    try { this.netServer.close() }catch(ignored:Throwable){}
+    try {
+      this.netServer.close()
+    } catch (ignored: Throwable) {
+    }
     this.netServer.connectHandler { socket ->
       val uuid = UUID.randomUUID().toString()
       socket.handler {

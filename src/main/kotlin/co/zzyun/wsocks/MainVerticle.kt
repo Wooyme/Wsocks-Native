@@ -1,5 +1,6 @@
 package co.zzyun.wsocks
 
+import co.zzyun.wsocks.server.receiver.MemcachedReceiver
 import co.zzyun.wsocks.server.receiver.WebSocketRecv
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Vertx
@@ -12,7 +13,7 @@ val unitMap = HashMap<Long, TransportUnit>()
 
 fun main(args: Array<String>) {
   val serverConfig = JsonObject(File(args[0]).readText())
-  val serverImpl = WebSocketRecv()
+  val serverImpl = MemcachedReceiver()//WebSocketRecv()
   val vertxOptions = VertxOptions()
   if(serverConfig.getBoolean("lowendbox")){
     vertxOptions.setEventLoopPoolSize(2)

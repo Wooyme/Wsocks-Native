@@ -7,18 +7,21 @@ import co.zzyun.wsocks.server.sender.ISender
 import co.zzyun.wsocks.unitMap
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.DeploymentOptions
+import io.vertx.core.Handler
 import io.vertx.core.http.HttpClientOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.SocketAddress
 import io.vertx.ext.web.client.WebClient
 import org.apache.commons.codec.binary.Base64
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-abstract class AbstractReceiver<T:Any>:AbstractVerticle() {
-  private val id by lazy { config().getString("id") }
-  private val host by lazy { config().getString("host") }
+abstract class AbstractReceiver<T:Any>(val isShort: Boolean = false):AbstractVerticle() {
+  data class LoginInfo(val socketAddress:SocketAddress,val recvType:String,val token:String,val conv:Long)
+  protected val id by lazy { config().getString("id") }
+  protected val host by lazy { config().getString("host") }
   private val centerHost by lazy { config().getJsonObject("center").getString("host") }
   private val centerPort by lazy { config().getJsonObject("center").getInteger("port") }
   private val wndSize by lazy { config().getInteger("WndSize") }
@@ -30,6 +33,7 @@ abstract class AbstractReceiver<T:Any>:AbstractVerticle() {
   protected val senderMap = HashMap<String,ISender>()
   protected val loginPort:Int by lazy { config().getInteger("login") }
   private val centerApi by lazy { CenterApi(centerPort,centerHost,WebClient.create(vertx)) }
+  private val conMap:MutableMap<String,KCP> = ConcurrentHashMap()
   override fun start() {
     super.start()
     udpServer.handler {
@@ -39,28 +43,44 @@ abstract class AbstractReceiver<T:Any>:AbstractVerticle() {
     }.listen(loginPort,"0.0.0.0"){
       println("Udp Server Listen at $loginPort")
     }
-    this.initServer{ recvType,token,conn,address,conv,cb ->
-      centerApi.validate(token).setHandler {
-        if(it.failed()){
-          println("Client:[$token] login failed")
-          cb(null)
-          return@setHandler
-        }
-        println("Client:[$token] login success")
-        val sender = senderMap[recvType]?:return@setHandler cb(null)
-        val kcp = newKcp(conv,sender,conn,address)
-        deployUnit(it.result(),token,kcp,conn,sender,address){
-          cb(kcp)
+    this.initServer(Handler {conn->
+      if(isShort){
+        val address = getConnection(conn)
+        conMap[address.host()+address.port()]?.let {
+          onData(conn,it)
+          return@Handler
         }
       }
-    }
+      val loginInfo = handleLogin(conn)?:return@Handler onFailed(conn)
+      centerApi.validate(loginInfo.token).setHandler {
+        if(it.failed()){
+          println("Client:[${loginInfo.token}] login failed")
+          onFailed(conn)
+        }else{
+          println("Client:[${loginInfo.token}] login success")
+          val sender = senderMap[loginInfo.recvType]?:return@setHandler onFailed(conn)
+          val kcp = newKcp(loginInfo.conv,sender,conn,loginInfo.socketAddress)
+          deployUnit(it.result().first,loginInfo.token,kcp,conn,sender,loginInfo.socketAddress){
+            onConnected(conn,kcp)
+            if(isShort){
+              conMap[loginInfo.socketAddress.host()+loginInfo.socketAddress.port()] = kcp
+            }
+          }
+        }
+      }
+    })
     centerApi.online(id,host,loginPort)
     vertx.setPeriodic(3*60*1000){
       centerApi.online(id,host,loginPort)
     }
   }
 
-  abstract fun initServer(onConnect: (String,String,T?, SocketAddress, Long,(KCP?)->Unit) -> Unit)
+  abstract fun initServer(handler:Handler<T>)
+  abstract fun handleLogin(conn:T):LoginInfo?
+  abstract fun getConnection(conn:T):SocketAddress
+  abstract fun onData(conn: T,kcp:KCP)
+  abstract fun onConnected(conn:T,kcp:KCP)
+  abstract fun onFailed(conn:T)
   abstract fun close(conn:T?,address: SocketAddress)
 
   private fun newKcp(conv:Long, sender: ISender,conn:T?,address:SocketAddress): KCP {

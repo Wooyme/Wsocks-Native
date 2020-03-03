@@ -25,7 +25,7 @@ public class Launcher extends Application {
     if (args.length == 0) {
       Client.start();
       Tray.initTray();
-      openWindow("http://www.zzyun.co/client/desktop/index.html");
+      openWindow("http://www.zzyun.co/client/desktop/index.html?v=memalpha");
     } else {
       System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
       System.out.println(args[0]);

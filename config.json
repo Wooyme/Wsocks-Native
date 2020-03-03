@@ -1,7 +1,7 @@
 {
-  "id": "1070",
+  "id": "3076",
   "lowendbox": true,
-  "host": "91.203.193.169",
+  "host": "192.168.1.1",
   "login": 1089,
   "maxWaitSnd": 8000,
   "WndSize": 256,
@@ -9,12 +9,6 @@
   "center": {
     "host": "www.zzyun.co",
     "port": 80
-  },
-  "pcap": {
-    "ip": "91.203.193.169",
-    "port": 9099,
-    "srcMac": "52:54:00:70:b8:90",
-    "gatewayMac": "00:25:90:76:2f:64"
   }
 }
 

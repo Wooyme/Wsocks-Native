@@ -55,7 +55,12 @@ public class Tray {
     mainMenu.add(openEntry);
     MenuItem reconnect = new MenuItem("重新连接", event -> {
       systemTray.setStatus("正在重新连接...");
-      Client.client.reconnect(current.getString("name"),current.getString("token"), current.getString("host"), current.getInteger("port"), "websocket").setHandler((e) -> {
+      Client.client.reconnect(current.getString("name")
+        ,current.getString("token")
+        , current.getString("host")
+        , current.getInteger("port")
+        , current.getString("type")
+        , current.getJsonObject("headers")).setHandler((e) -> {
         if (e.succeeded()) {
           systemTray.setStatus(current.getString("name"));
         } else {

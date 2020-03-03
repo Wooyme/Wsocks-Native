@@ -46,11 +46,12 @@ class TransportUnit(private val kcp:KCP, private val key:ByteArray, private val 
         len = kcp.Recv(data)
       }
     }
-    this.heartTimerID = vertx.setPeriodic(5*1000){
+    this.heartTimerID = vertx.setPeriodic(4*1000){
       //10s未收到任何数据则关闭这个单元
       if(lastAccessTs!=0L && Date().time-lastAccessTs>1000*10){
         this.stop()
       }
+      kcp.Send(heart)
     }
 
     this.updateTimerID = vertx.setPeriodic(6*60*1000){

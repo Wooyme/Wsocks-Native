@@ -22,8 +22,8 @@ class CenterApi(private val centerPort: Int, private val centerHost: String, pri
     return future
   }
 
-  fun validate(token: String):Future<ByteArray> {
-    val future = Future.future<ByteArray>()
+  fun validate(token: String):Future<Pair<ByteArray,JsonObject>> {
+    val future = Future.future<Pair<ByteArray,JsonObject>>()
     webClient.get(centerPort, centerHost, "/wp-json/wp/v2/users/me").putHeader("Authorization", "Bearer $token").send {
       if (it.failed()) {
         it.cause().printStackTrace()
@@ -36,7 +36,7 @@ class CenterApi(private val centerPort: Int, private val centerHost: String, pri
             array + ByteArray(16 - array.size) { 0x06 }
           else
             array
-          future.complete(key)
+          future.complete(key to JsonObject())
         }else{
           future.fail(it.result().statusMessage())
         }

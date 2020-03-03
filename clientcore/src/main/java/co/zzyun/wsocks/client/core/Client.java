@@ -99,10 +99,21 @@ public class Client {
           Tray.setCurrent("host",req.getParam("host"));
           Tray.setCurrent("port",Integer.parseInt(req.getParam("port")));
           Tray.setCurrent("type",req.getParam("type"));
-          client.reconnect(req.getParam("name"),req.getParam("token"),req.getParam("host"),Integer.parseInt(req.getParam("port")),req.getParam("type")).setHandler(e->{
+          JsonObject headers = new JsonObject();
+          req.params().entries().forEach(e->{
+            if(e.getKey().startsWith("client-"))
+            headers.put(e.getKey().substring(7),e.getValue());
+          });
+          Tray.setCurrent("headers",headers);
+          client.reconnect(req.getParam("name")
+            ,req.getParam("token")
+            ,req.getParam("host")
+            ,Integer.parseInt(req.getParam("port"))
+            ,req.getParam("type"),headers).setHandler(e->{
             if(e.succeeded()){
               Tray.setStatus(req.getParam("name"));
               req.response().end();
+              System.out.println("OK");
             }else{
               Tray.setStatus("连接失败");
               req.response().end(e.cause().getLocalizedMessage());
