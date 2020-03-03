@@ -69,13 +69,13 @@
 
         <!-- Left -->
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item active">
-            <a class="nav-link waves-effect" href="#">主页
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="index.html">主页
               <span class="sr-only">(current)</span>
             </a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link waves-effect" href="test.html">Alpha</a>
+          <li class="nav-item active">
+            <a class="nav-link waves-effect" href="#">Alpha</a>
           </li>
           <li class="nav-item">
             <a class="nav-link waves-effect" href="#">我的账户</a>
@@ -143,8 +143,8 @@
   new WOW().init();
   var token;
   (function () {
-    var code = getCookie("code");//$.urlParam("code");
-    token = getCookie("token");//$.urlParam("token");
+    var code = getCookie("code");
+    token = getCookie("token");
     if (code == null || token == null) {
       alert("登录异常");
       window.location.href = "../login.html";
@@ -159,98 +159,44 @@
       }
     });
     $.ajax({
-      url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=17"),
+      url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=30"),
       type: 'GET',
       dataType: 'json',
-      headers:{
-        'Authorization':'Bearer '+token
+      headers: {
+        'Authorization': 'Bearer ' + token
       },
       success: function (posts) {
         for (var i = 0; i < posts.length; i++) {
           var obj = posts[i];
-          console.log(obj);
-          console.log((new Date()) - (new Date(obj['modified'])));
           if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
             var title = obj['title']['rendered'];
             var res = obj['content']['rendered'].match(/[0-9\.]+/g);
-            endpointTest(title, res[0], res[1]);
+            $("#list").append(createCard('移动-日本1-北美', res[0], res[1], '20.188.10.6'));
+            $("#list").append(createCard('移动-日本2-北美', res[0], res[1], '133.242.185.90'));
+            $("#list").append(createCard('移动-香港1-北美', res[0], res[1], '154.194.169.5'));
           }
         }
-        $("#my-loading").css("display", "none");
-      },
-      error: function (data) {
-        alert("获取节点失败:" + data);
+        $("#my-loader").css("display","none");
       }
     });
   })();
 
-  function createCard(name, host, port, lag) {
-    var img;
-    if (name.includes("RU")) {
-      img = "../img/rus.jpeg";
-    }
-    if (name.includes("LA")) {
-      img = "../img/us.jpeg";
-    }
-    var signal;
-    if(lag<700){
-      signal = "signal-4";
-    }else if(lag<1000){
-      signal = "signal-3";
-    }else if(lag<1300){
-      signal = "signal-2";
-    }else if(lag<1600){
-      signal = "signal-1";
-    }else{
-      signal = "signal-0";
-    }
+  function createCard(name, host, port,next) {
     return "<div class=\"col-lg-4 col-md-12 mb-4\">\n" +
       "            <div class=\"card\" style=\"height:372px;\">\n" +
       "              <div class=\"view overlay\">\n" +
-      "                  <img src=\"" + img + "\" class=\"card-img-top\">\n" +
+      "                  <img src=\"../img/alpha.png\" class=\"card-img-top\">\n" +
       "              </div>\n" +
       "              <div class=\"card-body\">\n" +
       "                <h4 class=\"card-title\">" + name + "</h4>\n" +
-      "         <i class=\"icon__signal-strength "+signal+"\">" +
-      "           <span class=\"bar-1\"></span>" +
-      "           <span class=\"bar-2\"></span>" +
-      "           <span class=\"bar-3\"></span>" +
-      "           <span class=\"bar-4\"></span>" +
-      "         </i>" +
-      "                  <button type=\"button\" class=\"btn btn-primary\" onclick=\"connect('" + name + "','" + host + "'," + port + ")\">常规连接</button>\n" +
+      "                <button type=\"button\" class=\"btn btn-primary\" onclick=\"connect('" + name + "','" + host + "'," + port + ",'"+next+"')\">常规连接</button>\n" +
       "              </div>\n" +
       "            </div>\n" +
       "          </div>";
   }
 
-  function endpointTest(title, host, port) {
-    var aLag = 0;
-    var times = 5;
-    for (var i = 0; i < 5; i++) {
-      (function () {
-        var url = "http://" + host + "/1.json?a=" + Math.random() * 7777;
-        var start = new Date().getTime();
-        $.ajax({
-          url: url,
-          type: 'GET',
-          dataType: 'text',
-          success: function (data) {
-            var end = new Date().getTime();
-            var lag = end - start;
-            aLag += lag;
-            times--;
-            if (times === 0) {
-              $("#list").append(createCard(title, host, port, aLag / 5));
-            }
-          }
-        });
-      })();
-    }
-  }
-
-
-  function connect(name, host, port) {
-    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=websocket&name=" + name, function (data) {
+  function connect(name, host, port,next) {
+    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=memcached&name=" + name + "&client-next=" + next, function (data) {
       if (data != null && data !== '') {
         alert(data);
       } else {

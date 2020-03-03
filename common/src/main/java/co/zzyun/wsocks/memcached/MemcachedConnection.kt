@@ -8,6 +8,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
 import net.spy.memcached.MemcachedClient
 import net.spy.memcached.internal.CheckedOperationTimeoutException
+import java.util.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -64,7 +65,6 @@ class MemcachedConnection(private val id: String, private val vertx: Vertx, priv
           if (offsetRead.get() > tempOffsetRead.get())
             offsetRead.set(tempOffsetRead.get())
         }
-        println("Wnd: $cWnd,Cur: ${list.size}")
       }
     }
     offsetRead.addAndGet(cWnd)
@@ -84,11 +84,13 @@ class MemcachedConnection(private val id: String, private val vertx: Vertx, priv
   }
 
   fun stop() {
+    println("[${Date()}] Connection[$id] stopped")
     client.set(id, 600, DataNode.shutdown, MyTranscoder.instance)
     vertx.cancelTimer(timerId)
   }
 
   fun start() {
+    println("[${Date()}] Connection[$id] started")
     client.set(id, 600, DataNode.success, MyTranscoder.instance)
   }
 }

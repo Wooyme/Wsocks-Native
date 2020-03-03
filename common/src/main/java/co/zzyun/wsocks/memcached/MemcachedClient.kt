@@ -45,6 +45,11 @@ class MemcachedClient(private val vertx: Vertx,private val centerServer: String)
         }
       }
     }
+    vertx.setTimer(3*1000){
+      if(!succeeded){
+        this.stop()
+      }
+    }
   }
 
   fun write(data:Buffer){

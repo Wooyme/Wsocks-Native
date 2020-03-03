@@ -70,6 +70,7 @@
 <script src="js/jquery-3.4.1.min.js"></script>
 <script src="js/bootstrap.min.js"></script>
 <script src="js/my-login.js"></script>
+<script src="js/custom.js"></script>
 <script>
 
   $.urlParam = function (name) {
@@ -109,10 +110,9 @@
       success: function (data) {
         var token = data["token"];
         var code = btoa(JSON.stringify({"user":user,"pass":pass}));
-        if($.urlParam("version"))
-          redirect(encodeURI("home/index.html?version=211&code=" + code + "&token=" + token));
-        else
-          redirect(encodeURI("home/index.html?code=" + code + "&token=" + token));
+        setCookie("code",code,1);
+        setCookie("token",token,1);
+        redirect(encodeURI("home/index.html"));
         console.log("success!");
       },
       error: function (data) {

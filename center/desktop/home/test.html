@@ -114,13 +114,9 @@
           if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
             var title = obj['title']['rendered'];
             var res = obj['content']['rendered'].match(/[0-9\.]+/g);
-            $("#list").append(createCard('zz-JP1', res[0], res[1], 'memcached', 0, '20.188.10.6'));
-            $("#list").append(createCard('zz-SA', res[0], res[1], 'memcached', 0, '45.207.65.243'));
-
-            $("#list").append(createCard('zz-RU1', res[0], res[1], 'memcached', 0, '5.253.61.119'));
-            $("#list").append(createCard('zz-JP2', res[0], res[1], 'memcached', 0, '133.130.101.122'));
-            $("#list").append(createCard('zz-HK1', res[0], res[1], 'memcached', 0, '154.194.169.5'));
-            $("#list").append(createCard('zz-TW1', res[0], res[1], 'memcached', 0, '60.250.149.125'));
+            $("#list").append(createCard('移动-日本1-北美', res[0], res[1], 'memcached', 0, '20.188.10.6'));
+            $("#list").append(createCard('移动-日本2-北美', res[0], res[1], 'memcached', 0, '133.242.185.90'));
+            $("#list").append(createCard('移动-香港1-北美', res[0], res[1], 'memcached', 0, '154.194.169.5'));
           }
         }
         $("#my-loader").css("display","none");
