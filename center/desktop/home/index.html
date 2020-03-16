@@ -136,6 +136,7 @@
         $("#my-loader").css("display","none");
       }
     });
+
   })();
 
   function createCard(name, host, port,type,lag) {
@@ -211,6 +212,7 @@
           $("#success-modal-body").html("连接成功")
         }
       });
+    $("#success-modal-body").html("正在连接<div uk-spinner></div>");
     UIkit.modal($("#success-modal")).show();
   }
 </script>

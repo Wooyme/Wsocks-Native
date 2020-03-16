@@ -23,6 +23,7 @@ class MemcachedConnection(private val id: String, private val vertx: Vertx, priv
   private val offsetWrite = AtomicInteger(0)
   private val tempOffsetRead = AtomicInteger(0)
   private var wnd = AtomicInteger(DEFAULT)
+  private var stopped = false
   private val timerId = vertx.setPeriodic(50) {
     val offset = offsetRead.get()
     val cWnd = wnd.get()
@@ -30,16 +31,18 @@ class MemcachedConnection(private val id: String, private val vertx: Vertx, priv
       val future = Future.future<Pair<Int, DataNode?>>()
       val flag = id + flagPair.first + Integer.toHexString(offset + i)
       client.asyncGet(flag, MyTranscoder.instance).addListener {
-        try {
-          val node = it.get() as DataNode?
-          future.complete(offset + i to node)
-          if (node != null) {
-            client.delete(flag)
-            handler.handle(node.buffer)
+        if(!stopped) {
+          try {
+            val node = it.get() as DataNode?
+            future.complete(offset + i to node)
+            if (node != null) {
+              client.delete(flag)
+              handler.handle(node.buffer)
+            }
+          } catch (e: Throwable) {
+            this.stop()
+            this.stopHandler.handle(null)
           }
-        }catch (e:Throwable){
-          this.stop()
-          this.stopHandler.handle(null)
         }
       }
       future
@@ -85,6 +88,7 @@ class MemcachedConnection(private val id: String, private val vertx: Vertx, priv
 
   fun stop() {
     println("[${Date()}] Connection[$id] stopped")
+    this.stopped = true
     client.set(id, 600, DataNode.shutdown, MyTranscoder.instance)
     vertx.cancelTimer(timerId)
   }

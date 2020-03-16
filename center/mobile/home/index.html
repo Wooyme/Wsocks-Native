@@ -115,7 +115,7 @@
     </section>
   </div>
 </main>
-<div class="modal fade" id="success" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+<div class="modal fade" id="connecting" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
      aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -125,8 +125,9 @@
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div class="modal-body">
-        连接成功
+      <div id="connecting-body" class="modal-body">
+        正在连接
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">确定</button>
@@ -181,6 +182,9 @@
       error: function (data) {
         alert("获取节点失败:" + data);
       }
+    });
+    $("#connecting").on('hidden.bs.modal', function(){
+      $('#connecting-body').html("正在连接<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
     });
   })();
 
@@ -250,11 +254,12 @@
 
 
   function connect(name, host, port) {
+    $('#connecting').modal();
     $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=websocket&name=" + name, function (data) {
       if (data != null && data !== '') {
-        alert(data);
+        $('#connecting-body').html('连接失败' + data);
       } else {
-        $('#success').modal();
+        $('#connecting-body').html('连接成功');
       }
     });
   }

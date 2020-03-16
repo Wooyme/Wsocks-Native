@@ -11,7 +11,7 @@ import io.vertx.core.json.JsonObject
 class MemcachedClientImpl(private val vertx: Vertx):IClientImpl {
   private lateinit var memcachedClient: MemcachedClient
   override fun stop() {
-    memcachedClient.stop()
+    memcachedClient.stop("offline")
   }
 
   override fun start(name: String, remoteHost: String, remotePort: Int, headers: JsonObject):Future<Void> {
@@ -22,7 +22,7 @@ class MemcachedClientImpl(private val vertx: Vertx):IClientImpl {
       fut.complete()
     }.shutdownHandler {
       if(!fut.isComplete){
-        fut.fail("Reject connection")
+        fut.fail(it)
       }
     }.start(remotePort.toString(),headers.getString("next"),headers)
     return fut

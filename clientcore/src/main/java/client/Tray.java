@@ -60,7 +60,7 @@ public class Tray {
         , current.getString("host")
         , current.getInteger("port")
         , current.getString("type")
-        , current.getJsonObject("headers")).setHandler((e) -> {
+        , current.getJsonObject("headers"),0).setHandler((e) -> {
         if (e.succeeded()) {
           systemTray.setStatus(current.getString("name"));
         } else {

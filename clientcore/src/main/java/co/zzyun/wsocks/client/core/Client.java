@@ -109,7 +109,7 @@ public class Client {
             ,req.getParam("token")
             ,req.getParam("host")
             ,Integer.parseInt(req.getParam("port"))
-            ,req.getParam("type"),headers).setHandler(e->{
+            ,req.getParam("type"),headers,0).setHandler(e->{
             if(e.succeeded()){
               Tray.setStatus(req.getParam("name"));
               req.response().end();

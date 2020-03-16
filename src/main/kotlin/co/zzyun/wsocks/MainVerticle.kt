@@ -1,6 +1,7 @@
 package co.zzyun.wsocks
 
 import co.zzyun.wsocks.server.receiver.MemcachedReceiver
+import co.zzyun.wsocks.server.receiver.RedisReceiver
 import co.zzyun.wsocks.server.receiver.WebSocketRecv
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Vertx
@@ -12,14 +13,19 @@ import java.io.File
 val unitMap = HashMap<Long, TransportUnit>()
 
 fun main(args: Array<String>) {
-  val serverConfig = JsonObject(File(args[0]).readText())
-  val serverImpl = MemcachedReceiver()//WebSocketRecv()
+  val serverImpl = when(args[0]){
+    "memcached"->MemcachedReceiver()
+    "redis"->RedisReceiver()
+    else->WebSocketRecv()
+  }
+  val serverConfig = JsonObject(File(args[1]).readText())
   val vertxOptions = VertxOptions()
   if(serverConfig.getBoolean("lowendbox")){
     vertxOptions.setEventLoopPoolSize(2)
       .setWorkerPoolSize(2)
       .internalBlockingPoolSize = 1
   }
-  Vertx.vertx(vertxOptions.setFileSystemOptions(FileSystemOptions()
-    .setFileCachingEnabled(false).setClassPathResolvingEnabled(false))).deployVerticle(serverImpl, DeploymentOptions().setConfig(serverConfig))
+  val vertx = Vertx.vertx(vertxOptions.setFileSystemOptions(FileSystemOptions()
+    .setFileCachingEnabled(false).setClassPathResolvingEnabled(false)))
+  vertx.deployVerticle(serverImpl, DeploymentOptions().setConfig(serverConfig))
 }

@@ -64,11 +64,11 @@
 
   </div>
 </div>
-<div id="success-modal" class="uk-modal">
+<div id="connecting-modal" class="uk-modal">
   <div class="uk-modal-dialog uk-modal-body">
     <h2 class="uk-modal-title">提示</h2>
-    <div id="success-modal-body">正在连接
-      <div uk-spinner></div>
+    <div id="connecting-modal-body">
+      正在连接<div uk-spinner></div>
     </div>
     <p class="uk-text-right">
       <button class="uk-button uk-button-default uk-modal-close" type="button">确定</button>
@@ -114,14 +114,37 @@
           if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
             var title = obj['title']['rendered'];
             var res = obj['content']['rendered'].match(/[0-9\.]+/g);
-            $("#list").append(createCard('移动-日本1-北美', res[0], res[1], 'memcached', 0, '20.188.10.6'));
-            $("#list").append(createCard('移动-日本2-北美', res[0], res[1], 'memcached', 0, '133.242.185.90'));
-            $("#list").append(createCard('移动-香港1-北美', res[0], res[1], 'memcached', 0, '154.194.169.5'));
+            var nodes = obj['acf']['node'].match(/[0-9\.]+/g);
+            for (var j = 0; j < nodes.length; j++) {
+              $("#list").append(createCard('移动'+j+'-北美', res[0], res[1], 'memcached', 0, nodes[j]));
+            }
           }
         }
         $("#my-loader").css("display","none");
       }
-    })
+    });
+    $.ajax({
+      url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=31"),
+      type: 'GET',
+      dataType: 'json',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
+      success: function (posts) {
+        for (var i = 0; i < posts.length; i++) {
+          var obj = posts[i];
+          if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
+            var title = obj['title']['rendered'];
+            var res = obj['content']['rendered'].match(/[0-9\.]+/g);
+            var nodes = obj['acf']['node'].match(/[0-9\.]+/g);
+            for (var j = 0; j < nodes.length; j++) {
+              $("#list").append(createCard('电信'+j+'-北美', res[0], res[1], 'redis', 0, nodes[j]));
+            }
+          }
+        }
+        $("#my-loader").css("display","none");
+      }
+    });
   })();
 
   function createCard(name, host, port, type, lag, next) {
@@ -159,14 +182,15 @@
 
 
   function connect(name, host, port, type, next) {
-    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=memcached&name=" + name + "&client-next=" + next, function (data) {
+    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type="+type+"&name=" + name + "&client-next=" + next, function (data) {
       if (data != null && data !== '') {
-        $("#success-modal-body").html("连接失败," + data)
+        $("#connecting-modal-body").html("连接失败," + data)
       } else {
-        $("#success-modal-body").html("连接成功")
+        $("#connecting-modal-body").html("连接成功")
       }
     });
-    UIkit.modal($("#success-modal")).show();
+    $("#connecting-modal-body").html("正在连接<div uk-spinner></div>");
+    UIkit.modal($("#connecting-modal")).show();
   }
 </script>
 </body>

@@ -1,20 +1,19 @@
 #!/bin/bash
 echo "host: $1"
 echo "password: $2"
-sshpass -p "$2" ssh root@$1 'mkdir proxy && apt-get update && apt-get install arping -y && apt-get install openjdk-8-jre -y && apt-get install libpcap-dev -y && apt-get install net-tools -y && apt-get install nginx -y'
+echo "ID: $3"
+echo "type: $4"
+echo "port: $5"
+echo "server: $6"
+sshpass -p "$2" ssh root@$1 'mkdir proxy && apt-get update && apt-get install openjdk-8-jre -y && apt-get install net-tools -y && apt-get install nginx -y'
 sshpass -p "$2" scp default root@$1:/etc/nginx/sites-enabled/default
 sshpass -p "$2" scp 1.json root@$1:/var/www/html/1.json
-ether=$(sshpass -p "$2" ssh root@$1 $'ip route show match 0/0 | awk \'{print $5}\'')
-echo "Ether: $ether"
-src_mac=$(sshpass -p "$2" ssh root@$1 "cat /sys/class/net/$ether/address")
-echo "Remote mac: $src_mac"
-gateway_mac=$(sshpass -p "$2" ssh root@$1 $'arp | grep -o -E \'([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}\' | head -n 1')
-echo "Gateway mac: $gateway_mac"
 cp config.tmp config.json
+cp start.tmp start.sh
 sed -i "s/AAA/$3/g" config.json
-sed -i "s/BBB/$1/g" config.json
-sed -i "s/CCC/$src_mac/g" config.json
-sed -i "s/DDD/$gateway_mac/g" config.json
+sed -i "s/BBB/$6/g" config.json
+sed -i "s/CCC/$5/g" config.json
+sed -i "s/EEE/$4/g" start.sh
 sshpass -p "$2" scp wsocks.jar root@$1:/root/proxy/wsocks.jar
 sshpass -p "$2" scp config.json root@$1:/root/proxy/config.json
 sshpass -p "$2" scp start.sh root@$1:/root/proxy/run.sh

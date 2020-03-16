@@ -4,6 +4,8 @@ import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
+import net.spy.memcached.BinaryConnectionFactory
+import net.spy.memcached.ConnectionFactory
 import net.spy.memcached.MemcachedClient
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
@@ -15,13 +17,16 @@ class MemcachedServer(private val vertx: Vertx) {
     }
     private lateinit var connection: MemcachedConnection
     fun reject(){
-      (clientMap[nextIp]?: MemcachedClient(InetSocketAddress(nextIp,11211)).also {
+      (clientMap[nextIp]?: MemcachedClient(BinaryConnectionFactory(),listOf(InetSocketAddress(nextIp,11211))).also {
         clientMap[nextIp]=it
       }).set(id,1000,"reject")
     }
 
     fun connect():MemcachedConnection{
-      connection = MemcachedConnection(id,vertx,(clientMap[nextIp]?: MemcachedClient(InetSocketAddress(nextIp,11211)).also { clientMap[nextIp]=it }),info)
+      connection = MemcachedConnection(id,vertx,(clientMap[nextIp]?: MemcachedClient(BinaryConnectionFactory(),listOf(InetSocketAddress(nextIp,11211))).also { clientMap[nextIp]=it }),info)
+      connection.stopHandler(Handler {
+        clientMap.remove(nextIp)
+      })
       connection.start()
       return connection
     }
@@ -38,17 +43,22 @@ class MemcachedServer(private val vertx: Vertx) {
   private lateinit var onConnect:Handler<ConnectInfo>
   fun start(name: String, centerServer: String) {
     this.centerServer = centerServer
-    client = MemcachedClient(InetSocketAddress(centerServer, 11211))
+    client = MemcachedClient(BinaryConnectionFactory(),listOf(InetSocketAddress(centerServer, 11211)))
     client.delete(name)
     Thread.sleep(500)
     timerId = vertx.setPeriodic(200) {
       client.asyncGet(name, MyTranscoder.instance).addListener {
-        val data = it.get() as DataNode? ?: return@addListener
-        client.delete(name)
-        val json = data.buffer.toJsonObject()
-        val nextIp = json.getString("next")
-        val id = json.getString("id")
-        onConnect.handle(ConnectInfo(vertx,nextIp,id,json.getJsonObject("info")))
+        try {
+          val data = it.get() as DataNode? ?: return@addListener
+          client.delete(name)
+          val json = data.buffer.toJsonObject()
+          val nextIp = json.getString("next")
+          val id = json.getString("id")
+          onConnect.handle(ConnectInfo(vertx, nextIp, id, json.getJsonObject("info")))
+        }catch (e:Throwable){
+          this.stop()
+          this.start(name,centerServer)
+        }
       }
     }
   }

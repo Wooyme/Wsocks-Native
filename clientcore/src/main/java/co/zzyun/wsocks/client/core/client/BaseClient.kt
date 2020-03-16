@@ -4,6 +4,7 @@ import client.Tray
 import co.zzyun.wsocks.client.core.KCP
 import co.zzyun.wsocks.client.core.client.impl.IClientImpl
 import co.zzyun.wsocks.client.core.client.impl.MemcachedClientImpl
+import co.zzyun.wsocks.client.core.client.impl.RedisClientImpl
 import co.zzyun.wsocks.client.core.client.impl.WebsocketClientImpl
 import co.zzyun.wsocks.data.*
 import co.zzyun.wsocks.memcached.MemcachedClient
@@ -41,6 +42,7 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
   var statusMessage = ""
   private fun log(message: String) {
     statusMessage += "[${Date().toLocaleString()}]: $message\n"
+    println(message)
   }
 
   override fun start() {
@@ -56,6 +58,7 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
         try {
           client.write((Buffer.buffer().appendBytes(buffer, 0, size)))
         } catch (e: Throwable) {
+          e.printStackTrace()
           log("远程连接断开")
           offline()
         }
@@ -120,9 +123,13 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     this.netServer = vertx.createNetServer()
   }
 
-  fun reconnect(name: String, token: String, remoteHost: String, remotePort: Int, type: String,other:JsonObject): Future<Void> {
-    println("name:$name,remoteHost:$remoteHost,remotePort:$remotePort")
+  fun reconnect(name: String, token: String, remoteHost: String, remotePort: Int, type: String,other:JsonObject,retry:Int): Future<Void> {
     val fut = Future.future<Void>()
+    if(retry>2){
+      fut.fail("Retry")
+      return fut
+    }
+    println("name:$name,remoteHost:$remoteHost,remotePort:$remotePort")
     this.offline()
     this.online()
     val conv = Date().time / 1000
@@ -132,16 +139,24 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
       "memcached"->{
         MemcachedClientImpl(vertx)
       }
+      "redis"->{
+        RedisClientImpl(vertx)
+      }
       else->{
         WebsocketClientImpl(vertx)
       }
     }
     client.start(name,remoteHost,remotePort,json).setHandler {
+      if(it.failed()){
+        Tray.setStatus("连接失败")
+        fut.fail(it.cause())
+        return@setHandler
+      }
       initSocksServer(initKcp(conv))
       this.heartTimerID = vertx.setPeriodic(2 * 1000) {
         //10s未收到任何数据则关闭client
         if (lastAccessTs != 0L && Date().time - lastAccessTs > 1000 * 10) {
-          this.reconnect(name, token, remoteHost, remotePort, type,other).setHandler {
+          this.reconnect(name, token, remoteHost, remotePort, type,other,retry+1).setHandler {
             if (it.succeeded())
               Tray.setStatus(name)
             else {
