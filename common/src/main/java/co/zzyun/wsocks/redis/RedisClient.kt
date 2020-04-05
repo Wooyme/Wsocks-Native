@@ -32,6 +32,7 @@ class RedisClient(private val vertx: Vertx, private val centerServer: String,pri
           client.del(id){
             println(it.succeeded())
           }
+          println(it.result().toString())
           when(it.result().toString()){
             "success"->{
               if(!succeeded) {
@@ -48,11 +49,15 @@ class RedisClient(private val vertx: Vertx, private val centerServer: String,pri
               println("Shutdown from remote")
               this.stop("Shutdown from remote")
             }
+            "reject"->{
+              println("reject by remote")
+              this.stop("Rejected by remote")
+            }
           }
         }
       }
     }
-    vertx.setTimer(8*1000){
+    vertx.setTimer(16*1000){
       if(!succeeded){
         println("Timeout")
         this.stop("Timeout")

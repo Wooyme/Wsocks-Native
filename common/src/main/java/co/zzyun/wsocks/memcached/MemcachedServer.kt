@@ -49,6 +49,7 @@ class MemcachedServer(private val vertx: Vertx) {
     timerId = vertx.setPeriodic(200) {
       client.asyncGet(name, MyTranscoder.instance).addListener {
         try {
+          println("data")
           val data = it.get() as DataNode? ?: return@addListener
           client.delete(name)
           val json = data.buffer.toJsonObject()
@@ -56,6 +57,7 @@ class MemcachedServer(private val vertx: Vertx) {
           val id = json.getString("id")
           onConnect.handle(ConnectInfo(vertx, nextIp, id, json.getJsonObject("info")))
         }catch (e:Throwable){
+          e.printStackTrace()
           this.stop()
           this.start(name,centerServer)
         }

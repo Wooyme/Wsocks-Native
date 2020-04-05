@@ -49,6 +49,11 @@
       <artifactId>vertx-web-client</artifactId>
       <version>3.6.3</version>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-amqp-client</artifactId>
+      <version>3.7.0</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -78,7 +83,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>Main</mainClass>
+              <mainClass>Redis</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -88,7 +93,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>Main</mainClass>
+              <mainClass>Redis</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>

@@ -1,5 +1,6 @@
 package co.zzyun.wsocks
 
+import co.zzyun.wsocks.server.receiver.AMQPReceiver
 import co.zzyun.wsocks.server.receiver.MemcachedReceiver
 import co.zzyun.wsocks.server.receiver.RedisReceiver
 import co.zzyun.wsocks.server.receiver.WebSocketRecv
@@ -16,6 +17,7 @@ fun main(args: Array<String>) {
   val serverImpl = when(args[0]){
     "memcached"->MemcachedReceiver()
     "redis"->RedisReceiver()
+    "amqp"->AMQPReceiver()
     else->WebSocketRecv()
   }
   val serverConfig = JsonObject(File(args[1]).readText())

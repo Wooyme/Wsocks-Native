@@ -24,6 +24,7 @@ abstract class AbstractReceiver<T:Any>(val isShort: Boolean = false):AbstractVer
   protected val host by lazy { config().getString("host") }
   private val centerHost by lazy { config().getJsonObject("center").getString("host") }
   private val centerPort by lazy { config().getJsonObject("center").getInteger("port") }
+  private val fast by lazy { config().getBoolean("fast")?:true }
   private val wndSize by lazy { config().getInteger("WndSize") }
   private val mtu by lazy { config().getInteger("mtu") }
   private val maxWaitSnd by lazy { config().getInteger("maxWaitSnd") }
@@ -92,7 +93,10 @@ abstract class AbstractReceiver<T:Any>(val isShort: Boolean = false):AbstractVer
       }
     kcp.SetMtu(mtu)
     kcp.WndSize(wndSize, wndSize)
-    kcp.NoDelay(1, 20, 2, 1)
+    if(fast)
+      kcp.NoDelay(1, 20, 2, 1)
+    else
+      kcp.NoDelay(0,20,0,0)
     return kcp
   }
 

@@ -1,8 +1,8 @@
 {
-  "id": "5609",
+  "id": "3076",
   "lowendbox": true,
-  "host": "54.250.159.240:6379",
-  "login": 5609,
+  "host": "150.60.180.200",
+  "login": 3076,
   "maxWaitSnd": 8000,
   "WndSize": 256,
   "mtu": 1200,

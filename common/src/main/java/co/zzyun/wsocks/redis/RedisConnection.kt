@@ -13,8 +13,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class RedisConnection(private val id: String, private val vertx: Vertx, private val client: RedisClient, val info: JsonObject, private val flagPair: Pair<String, String> = ("c" to "s")) {
   companion object {
-    const val DEFAULT = 4
-    var mag = 4
+    const val DEFAULT = 2
+    const val mag = 2
+    const val max= 8
+    const val delay = 20L
   }
   private lateinit var stopHandler: Handler<Void>
   private lateinit var handler: Handler<Buffer>
@@ -23,7 +25,7 @@ class RedisConnection(private val id: String, private val vertx: Vertx, private 
   private val tempOffsetRead = AtomicInteger(0)
   private var wnd = AtomicInteger(DEFAULT)
   private var stopped = AtomicBoolean(false)
-  private val timerId = vertx.setPeriodic(50) {
+  private val timerId = vertx.setPeriodic(delay) {
     val offset = offsetRead.get()
     val cWnd = wnd.get()
     (0 until cWnd).map { i ->
@@ -48,27 +50,33 @@ class RedisConnection(private val id: String, private val vertx: Vertx, private 
       }
       future
     }.let {
+      val beginTime = Date()
       CompositeFuture.all(it).setHandler {
+        val lag = Date().time - beginTime.time
         val list = it.result().list<Pair<Int, Boolean>>().filter { it.second }.sortedBy { it.first }
         if (list.isNotEmpty()) {
           if (tempOffsetRead.get() < list.last().first)
             tempOffsetRead.set(list.last().first)
-          if (list.size >= wnd.get())
-            if (wnd.get() < 64)
-              if(wnd.get()*mag<=64) {
+          if(lag > 10* delay) {
+            wnd.set(DEFAULT)
+          }else if (list.size >= wnd.get()) {
+            if (wnd.get() < max)
+              if (wnd.get() * mag <= max) {
                 wnd.accumulateAndGet(mag) { x, y -> x * y }
-              }else{
-                wnd.set(64)
+              } else {
+                wnd.set(max)
               }
-            else if (wnd.get()>=cWnd && list.size < wnd.get() / 2) {
+            else if (wnd.get() >= cWnd && list.size < wnd.get() / 2) {
               wnd.set(DEFAULT)
             }
+          }
         } else {
           if (wnd.get() >=cWnd)
             wnd.set(DEFAULT)
           if (offsetRead.get() > tempOffsetRead.get())
             offsetRead.set(tempOffsetRead.get())
         }
+        println("wnd:${wnd.get()},lag:$lag")
       }
     }
     offsetRead.addAndGet(cWnd)

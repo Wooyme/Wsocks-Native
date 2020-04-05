@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>SuperEngine-Login</title>
-  <link href="http://lib.baomitu.com/uikit/3.2.3/css/uikit.min.css" rel="stylesheet">
+  <link href="https://lib.baomitu.com/uikit/3.2.3/css/uikit.min.css" rel="stylesheet">
 </head>
 <body>
 <nav class="uk-navbar uk-navbar-container">
@@ -24,13 +24,13 @@
       </div>
       <div class="uk-margin">
         <div class="uk-flex uk-flex-right">
-          <a href="http://www.zzyun.co/my-account/lost-password/">Forgot password?</a>
+          <a href="http://zzyun.co/my-account/lost-password/">Forgot password?</a>
         </div>
         <input id="password" class="uk-input" type="password" placeholder="Password">
       </div>
     </div>
     <div class="uk-card-footer uk-flex uk-flex-between">
-      <a class="uk-button uk-button-default" href="http://www.zzyun.co/my-account/lost-password/">Register</a>
+      <a class="uk-button uk-button-default" href="http://zzyun.co/my-account/lost-password/">Register</a>
       <button id="login" class="uk-button uk-button-primary" onclick="login()">Login</button>
     </div>
   </div>
@@ -44,9 +44,9 @@
     </p>
   </div>
 </div>
-<script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
-<script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
-<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script src="https://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
+<script src="https://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
+<script src="https://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
 <script src="js/custom.js"></script>
 <script>
   $.urlParam = function (name) {
@@ -85,7 +85,7 @@
     var user = $('#username').val();
     var pass = $('#password').val();
     $.ajax({
-      url: encodeURI("http://www.zzyun.co/wp-json/jwt-auth/v1/token"),
+      url: encodeURI("http://zzyun.co/wp-json/jwt-auth/v1/token"),
       type: 'POST',
       dataType: 'json',
       contentType: "application/json; charset=utf-8",

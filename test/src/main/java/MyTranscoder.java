@@ -1,7 +1,8 @@
+import io.vertx.core.buffer.Buffer;
 import net.spy.memcached.CachedData;
 import net.spy.memcached.transcoders.Transcoder;
 
-public class MyTranscoder implements Transcoder<String> {
+public class MyTranscoder implements Transcoder<Buffer> {
   public static MyTranscoder instance = new MyTranscoder();
   @Override
   public boolean asyncDecode(CachedData d) {
@@ -9,13 +10,13 @@ public class MyTranscoder implements Transcoder<String> {
   }
 
   @Override
-  public CachedData encode(String o) {
+  public CachedData encode(Buffer o) {
     return new CachedData(0,o.getBytes(),1500);
   }
 
   @Override
-  public String decode(CachedData d) {
-    return new String(d.getData());
+  public Buffer decode(CachedData d) {
+    return Buffer.buffer(d.getData());
   }
 
   @Override

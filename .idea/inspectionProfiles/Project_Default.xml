@@ -14,7 +14,7 @@
     </inspection_tool>
     <inspection_tool class="Duplicates" enabled="true" level="WEAK WARNING" enabled_by_default="true">
       <Java>
-        <minSize>52</minSize>
+        <minSize>99</minSize>
         <isEnabled>true</isEnabled>
       </Java>
     </inspection_tool>

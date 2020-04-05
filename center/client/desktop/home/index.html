@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>SuperEngine-Home</title>
-  <link href="http://lib.baomitu.com/uikit/3.2.3/css/uikit.min.css" rel="stylesheet">
-  <script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
-  <script src="http://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
-  <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+  <link href="https://lib.baomitu.com/uikit/3.2.3/css/uikit.min.css" rel="stylesheet">
+  <script src="https://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
+  <script src="https://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
+  <script src="https://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
   <script>
     window.endpoints = [];
     window.onInjected = function(){
@@ -110,13 +110,13 @@
     var json = JSON.parse(atob(code));
     var user = json['user'];
     var pass = json['pass'];
-    $.get(encodeURI("http://localhost:1078/start?center_host=www.zzyun.co&center_port=1777&user=" + user + "&pass=" + pass), function (data) {
+    $.get(encodeURI("http://localhost:1078/start?center_host=zzyun.co&center_port=1777&user=" + user + "&pass=" + pass), function (data) {
       if (data !== '') {
         alert(data)
       }
     });
     $.ajax({
-      url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=17"),
+      url: encodeURI("http://zzyun.co/wp-json/wp/v2/posts?categories=17"),
       type: 'GET',
       dataType: 'json',
       headers:{

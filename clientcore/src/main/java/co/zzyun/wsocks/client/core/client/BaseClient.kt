@@ -90,6 +90,7 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
 
   private fun handle(buffer: Buffer) {
     if (buffer.length() < 4) return
+    println("[${Date()}]"+buffer.getIntLE(0))
     when (buffer.getIntLE(0)) {
       Flag.CONNECT_SUCCESS.ordinal -> connectedHandler(ConnectSuccess(userInfo.key, buffer).uuid)
       Flag.EXCEPTION.ordinal -> exceptionHandler(Exception(userInfo.key, buffer))
@@ -106,14 +107,11 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
     if (heartTimerID != 0L) vertx.cancelTimer(heartTimerID)
     lastAccessTs = 0L
     if (isKcpInitialized) kcp.clean()
-    if (this::netServer.isInitialized) try {
-      netServer.close()
-    } catch (ignored: Throwable) {
-    }
     try {
+      if (this::netServer.isInitialized)
+        netServer.close()
       client.stop()
-    } catch (ignored: Throwable) {
-    }
+    }catch (ignored: Throwable) { }
     connectMap.clear()
   }
 
@@ -184,6 +182,13 @@ class BaseClient(private val userInfo: UserInfo) : AbstractVerticle() {
       socket.handler {
         //如果连接已经建立，则直接使用通道，否则进入socks5连接过程
         if (connectMap.containsKey(uuid)) {
+//          fun wait() {
+//            socket.pause()
+//            vertx.setTimer(500) {
+//              if(kcp.WaitSnd()>4000) wait() else socket.resume()
+//            }
+//          }
+//          if(kcp.WaitSnd()>4000) wait()
           kcp.Send(RawData.create(userInfo.key, uuid, it))
         } else {
           bufferHandler(uuid, socket, it)

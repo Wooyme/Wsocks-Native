@@ -69,6 +69,11 @@
       <artifactId>SystemTray</artifactId>
       <version>3.17</version>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-amqp-client</artifactId>
+      <version>3.7.0</version>
+    </dependency>
   </dependencies>
   <build>
     <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
