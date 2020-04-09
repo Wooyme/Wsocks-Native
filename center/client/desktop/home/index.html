@@ -66,7 +66,8 @@
   <div class="uk-navbar-left">
     <ul class="uk-navbar-nav">
       <li class="uk-active"><a href="#">SuperEngine</a></li>
-      <li><a href="test.html"><span class="uk-icon uk-margin-small-right" uk-icon="icon: star"></span>Alpha</a></li>
+      <li><a href="test.html">Alpha</a></li>
+      <li><a href="beta.html"><span class="uk-icon uk-margin-small-right" uk-icon="icon: star"></span>Beta</a></li>
       <li><a href="#">Info</a></li>
       <li><a href="#">My Account</a></li>
     </ul>
@@ -110,13 +111,13 @@
     var json = JSON.parse(atob(code));
     var user = json['user'];
     var pass = json['pass'];
-    $.get(encodeURI("http://localhost:1078/start?center_host=zzyun.co&center_port=1777&user=" + user + "&pass=" + pass), function (data) {
+    $.get(encodeURI("http://localhost:1078/start?user=" + user + "&pass=" + pass), function (data) {
       if (data !== '') {
         alert(data)
       }
     });
     $.ajax({
-      url: encodeURI("http://zzyun.co/wp-json/wp/v2/posts?categories=17"),
+      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=4"),
       type: 'GET',
       dataType: 'json',
       headers:{
@@ -125,8 +126,6 @@
       success: function (posts) {
         for (var i = 0; i < posts.length; i++) {
           var obj = posts[i];
-          console.log(obj);
-          console.log((new Date()) - (new Date(obj['modified'])));
           if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
             var title = obj['title']['rendered'];
             var res = obj['content']['rendered'].match(/[0-9\.]+/g);
@@ -144,7 +143,7 @@
     if (name.includes("RU")) {
       img = "../img/ru.jpeg";
     }
-    if (name.includes("LA")) {
+    if (name.includes("USA")) {
       img = "../img/us.jpeg";
     }
     var signal;

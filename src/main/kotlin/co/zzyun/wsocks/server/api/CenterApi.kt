@@ -15,6 +15,7 @@ class CenterApi(private val centerPort: Int, private val centerHost: String, pri
           future.fail(it.cause())
         } else {
           serverToken = it.result().bodyAsJsonObject().getString("token")
+          println(serverToken)
           println("Connected to center!")
           future.complete()
         }

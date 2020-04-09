@@ -38,7 +38,7 @@ public class Memcached {
             String key = RandomStringUtils.randomAlphanumeric(8);
             Date beginTime = new Date();
             List<Future> futList = new LinkedList<>();
-            for (int i = 0; i < 64; i++) {
+            for (int i = 0; i < 4; i++) {
               Future<Void> fut = Future.future();
               futList.add(fut);
               client.set(key, 1000, Buffer.buffer(RandomStringUtils.randomAlphanumeric(1200)), MyTranscoder.instance).addListener(f -> {

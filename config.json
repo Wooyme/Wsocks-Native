@@ -1,14 +1,32 @@
 {
-  "id": "3076",
   "lowendbox": true,
-  "host": "150.60.180.200",
-  "login": 3076,
-  "maxWaitSnd": 8000,
-  "WndSize": 256,
-  "mtu": 1200,
-  "center": {
-    "host": "www.zzyun.co",
-    "port": 80
-  }
+  "servers": [
+    {
+      "id": "45",
+      "core": "memcached",
+      "host": "156.249.51.245",
+      "login": 37,
+      "maxWaitSnd": 8000,
+      "WndSize": 256,
+      "mtu": 1200,
+      "center": {
+        "host": "61.175.122.154",
+        "port": 7988
+      }
+    },
+    {
+      "id": "47",
+      "core": "redis",
+      "host": "103.101.179.233",
+      "login": 34,
+      "maxWaitSnd": 8000,
+      "WndSize": 256,
+      "mtu": 1200,
+      "center": {
+        "host": "61.175.122.154",
+        "port": 7988
+      }
+    }
+  ]
 }
 

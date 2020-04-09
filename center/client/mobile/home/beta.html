@@ -11,39 +11,6 @@
   <link href="../css/mdb.min.css" rel="stylesheet">
   <link href="../css/style.min.css" rel="stylesheet">
   <script type="text/javascript" src="../js/jquery-3.4.1.min.js"></script>
-  <style>
-    .icon__signal-strength {
-      display: inline-flex;
-      align-items: flex-end;
-      justify-content: flex-end;
-      width: auto;
-      height: 35px;
-      padding: 4px;
-    }
-    .icon__signal-strength span {
-      display: inline-block;
-      width: 6px;
-      margin-left: 2px;
-      transform-origin: 100% 100%;
-      background-color: #00cc00;
-      border-radius:2px;
-    }
-    .icon__signal-strength .bar-1{
-      height:25%;
-    }
-    .icon__signal-strength .bar-2{
-      height:50%;
-    }
-    .icon__signal-strength .bar-3{
-      height:75%;
-    }
-    .icon__signal-strength .bar-4{
-      height:100%;
-    }
-    .signal-0 .bar-1,.signal-0  .bar-2,.signal-0  .bar-3,.signal-0  .bar-4,.signal-1 .bar-2,.signal-1 .bar-3, .signal-1 .bar-4,.signal-2 .bar-3,.signal-2 .bar-4,.signal-3 .bar-4 {
-      opacity: 0.2;
-    }
-  </style>
 </head>
 
 <body>
@@ -69,16 +36,13 @@
 
         <!-- Left -->
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item active">
-            <a class="nav-link waves-effect" href="#">主页
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="index.html">主页
               <span class="sr-only">(current)</span>
             </a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link waves-effect" href="test.html">Alpha</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link waves-effect" href="beta.html">Beta</a>
+          <li class="nav-item active">
+            <a class="nav-link waves-effect" href="#">Beta</a>
           </li>
           <li class="nav-item">
             <a class="nav-link waves-effect" href="#">我的账户</a>
@@ -110,7 +74,6 @@
 <main class="mt-5 pt-5">
   <div class="container">
     <section class="text-center">
-      <p><a href="beta.html">为什么不试试beta版呢</a></p>
       <p id="my-loading">节点加载中
         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
       </p>
@@ -130,8 +93,7 @@
         </button>
       </div>
       <div id="connecting-body" class="modal-body">
-        正在连接
-        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
+        正在连接<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">确定</button>
@@ -148,8 +110,8 @@
   new WOW().init();
   var token;
   (function () {
-    var code = getCookie("code");//$.urlParam("code");
-    token = getCookie("token");//$.urlParam("token");
+    var code = getCookie("code");
+    token = getCookie("token");
     if (code == null || token == null) {
       alert("登录异常");
       window.location.href = "../login.html";
@@ -163,103 +125,108 @@
         alert(data)
       }
     });
-    $.ajax({
-      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=4"),
+    $.when($.ajax({
+      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=3"),
       type: 'GET',
       dataType: 'json',
-      headers:{
-        'Authorization':'Bearer '+token
-      },
-      success: function (posts) {
+      headers: {'Authorization': 'Bearer ' + token}
+    }),$.ajax({
+      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=2"),
+      type: 'GET',
+      dataType: 'json',
+      headers: {'Authorization': 'Bearer ' + token}
+    })).done(function(res1,res2){
+      var posts = res1[0];
+      (function() {
         for (var i = 0; i < posts.length; i++) {
           var obj = posts[i];
-          console.log(obj);
-          console.log((new Date()) - (new Date(obj['modified'])));
           if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
             var title = obj['title']['rendered'];
             var res = obj['content']['rendered'].match(/[0-9\.]+/g);
-            endpointTest(title, res[0], res[1]);
+            var host = res[0];
+            var port = res[1];
+            $("#list").append(createCard(title, host, port, "memcached"));
           }
         }
-        $("#my-loading").css("display", "none");
-      },
-      error: function (data) {
-        alert("获取节点失败:" + data);
-      }
+      })();
+      posts = res2[0];
+      (function() {
+        for (var i = 0; i < posts.length; i++) {
+          var obj = posts[i];
+          if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
+            var title = obj['title']['rendered'];
+            var res = obj['content']['rendered'].match(/[0-9\.]+/g);
+            var host = res[0];
+            var port = res[1];
+            $("#list").append(createCard(title, host, port, "redis"));
+          }
+        }
+      })();
+      $("#my-loading").css("display","none");
     });
     $("#connecting").on('hidden.bs.modal', function(){
       $('#connecting-body').html("正在连接<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
     });
   })();
 
-  function createCard(name, host, port, lag) {
-    var img;
-    if (name.includes("RU")) {
-      img = "../img/rus.jpeg";
-    }
-    if (name.includes("USA")) {
-      img = "../img/us.jpeg";
-    }
-    var signal;
-    if(lag<700){
-      signal = "signal-4";
-    }else if(lag<1000){
-      signal = "signal-3";
-    }else if(lag<1300){
-      signal = "signal-2";
-    }else if(lag<1600){
-      signal = "signal-1";
-    }else{
-      signal = "signal-0";
-    }
+  function createCard(name, host, port,type) {
     return "<div class=\"col-lg-4 col-md-12 mb-4\">\n" +
       "            <div class=\"card\" style=\"height:372px;\">\n" +
       "              <div class=\"view overlay\">\n" +
-      "                  <img src=\"" + img + "\" class=\"card-img-top\">\n" +
+      "                  <img src=\"../img/alpha.png\" class=\"card-img-top\">\n" +
       "              </div>\n" +
       "              <div class=\"card-body\">\n" +
       "                <h4 class=\"card-title\">" + name + "</h4>\n" +
-      "         <i class=\"icon__signal-strength "+signal+"\">" +
-      "           <span class=\"bar-1\"></span>" +
-      "           <span class=\"bar-2\"></span>" +
-      "           <span class=\"bar-3\"></span>" +
-      "           <span class=\"bar-4\"></span>" +
-      "         </i>" +
-      "                  <button type=\"button\" class=\"btn btn-primary\" onclick=\"connect('" + name + "','" + host + "'," + port + ")\">常规连接</button>\n" +
+      "                <button type=\"button\" class=\"btn btn-primary\" onclick=\"findNode('" + name + "','" + host + "'," + port + ",'"+type+"')\">常规连接</button>\n" +
       "              </div>\n" +
       "            </div>\n" +
       "          </div>";
   }
 
-  function endpointTest(title, host, port) {
-    var aLag = 0;
-    var times = 5;
-    for (var i = 0; i < 5; i++) {
-      (function () {
-        var url = "http://" + host + "/1.json?a=" + Math.random() * 7777;
-        var start = new Date().getTime();
+  function findNode(name,host,port,type){
+    switch (type) {
+      case "memcached":
         $.ajax({
-          url: url,
+          url: encodeURI("http://67.165.122.154:7988/client/memcached.json"),
           type: 'GET',
-          dataType: 'text',
-          success: function (data) {
-            var end = new Date().getTime();
-            var lag = end - start;
-            aLag += lag;
-            times--;
-            if (times === 0) {
-              $("#list").append(createCard(title, host, port, aLag / 5));
-            }
-          }
+          dataType: 'json'
+        }).always(function(res){
+          nodeTest(name,host,port,type,res);
         });
-      })();
+        break;
+      case "redis":
+        $.ajax({
+          url: encodeURI("http://67.165.122.154:7988/client/redis.json"),
+          type: 'GET',
+          dataType: 'json'
+        }).always(function(res){
+          nodeTest(name,host,port,type,res);
+        });
+        break;
     }
   }
 
-
-  function connect(name, host, port) {
+  function nodeTest(name,host,port,type,nodes){
+    $("#connecting-body").html("正在寻找合适的中继通道,大约需要10s左右<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
     $('#connecting').modal();
-    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type=websocket&name=" + name, function (data) {
+    $.ajax({
+      url:"http://localhost:1078/test/"+type,
+      type: 'POST',
+      dataType: 'json',
+      contentType: 'application/json',
+      data: JSON.stringify(nodes)
+    }).always(function(res){
+      if(res.status===1){
+        connect(name,host,port,type,res.ip);
+      }else{
+        $("#connecting-modal-body").html("无可用的中继通道("+JSON.stringify(res)+")");
+      }
+    })
+  }
+
+  function connect(name, host, port,type,next) {
+    $("#connecting-body").html("正在连接<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
+    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type="+type+"&name=" + name + "&client-next=" + next, function (data) {
       if (data != null && data !== '') {
         $('#connecting-body').html('连接失败' + data);
       } else {

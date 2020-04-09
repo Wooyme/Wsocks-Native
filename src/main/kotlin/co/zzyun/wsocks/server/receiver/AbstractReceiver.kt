@@ -30,20 +30,12 @@ abstract class AbstractReceiver<T:Any>(val isShort: Boolean = false):AbstractVer
   private val maxWaitSnd by lazy { config().getInteger("maxWaitSnd") }
   private val eventBus by lazy { vertx.eventBus() }
   private val httpClient by lazy { vertx.createHttpClient(HttpClientOptions().setConnectTimeout(20*1000)) }
-  private val udpServer by lazy { vertx.createDatagramSocket() }
   protected val senderMap = HashMap<String,ISender>()
   protected val loginPort:Int by lazy { config().getInteger("login") }
   private val centerApi by lazy { CenterApi(centerPort,centerHost,WebClient.create(vertx)) }
   private val conMap:MutableMap<String,KCP> = ConcurrentHashMap()
   override fun start() {
     super.start()
-    udpServer.handler {
-      val host = it.sender().host()
-      val port = it.sender().port()
-      udpServer.send(JsonObject().put("port",port).put("host",host).toBuffer(),port,host){}
-    }.listen(loginPort,"0.0.0.0"){
-      println("Udp Server Listen at $loginPort")
-    }
     this.initServer(Handler {conn->
       if(isShort){
         val address = getConnection(conn)

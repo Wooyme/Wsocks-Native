@@ -11,39 +11,6 @@
   <link href="../css/mdb.min.css" rel="stylesheet">
   <link href="../css/style.min.css" rel="stylesheet">
   <script type="text/javascript" src="../js/jquery-3.4.1.min.js"></script>
-  <style>
-    .icon__signal-strength {
-      display: inline-flex;
-      align-items: flex-end;
-      justify-content: flex-end;
-      width: auto;
-      height: 35px;
-      padding: 4px;
-    }
-    .icon__signal-strength span {
-      display: inline-block;
-      width: 6px;
-      margin-left: 2px;
-      transform-origin: 100% 100%;
-      background-color: #00cc00;
-      border-radius:2px;
-    }
-    .icon__signal-strength .bar-1{
-      height:25%;
-    }
-    .icon__signal-strength .bar-2{
-      height:50%;
-    }
-    .icon__signal-strength .bar-3{
-      height:75%;
-    }
-    .icon__signal-strength .bar-4{
-      height:100%;
-    }
-    .signal-0 .bar-1,.signal-0  .bar-2,.signal-0  .bar-3,.signal-0  .bar-4,.signal-1 .bar-2,.signal-1 .bar-3, .signal-1 .bar-4,.signal-2 .bar-3,.signal-2 .bar-4,.signal-3 .bar-4 {
-      opacity: 0.2;
-    }
-  </style>
 </head>
 
 <body>
@@ -107,131 +74,15 @@
 <main class="mt-5 pt-5">
   <div class="container">
     <section class="text-center">
-      <p id="my-loading">节点加载中
-        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
-      </p>
-      <div id="list" class="row mb-4 wow fadeIn">
-      </div>
+      <p>Alpha版以升级为Beta版，请复制以下地址到浏览器下载：</p>
+      <p>http://61.175.122.154:7988/download/beta1.0.apk</p>
     </section>
   </div>
 </main>
-<div class="modal fade" id="connecting" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-     aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">提示</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div id="connecting-body" class="modal-body">
-        正在连接
-        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">确定</button>
-      </div>
-    </div>
-  </div>
-</div>
 <script type="text/javascript" src="../js/popper.min.js"></script>
 <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 <script type="text/javascript" src="../js/mdb.min.js"></script>
 <script type="text/javascript" src="../js/custom.js"></script>
-<script type="text/javascript">
-  // Animations initialization
-  new WOW().init();
-  var token;
-  (function () {
-    var code = getCookie("code");
-    token = getCookie("token");
-    if (code == null || token == null) {
-      alert("登录异常");
-      window.location.href = "../login.html";
-      return;
-    }
-    var json = JSON.parse(atob(code));
-    var user = json['user'];
-    var pass = json['pass'];
-    $.get(encodeURI("http://localhost:1078/start?center_host=www.zzyun.co&center_port=1777&user=" + user + "&pass=" + pass), function (data) {
-      if (data !== '') {
-        alert(data)
-      }
-    });
-    $.ajax({
-      url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=30"),
-      type: 'GET',
-      dataType: 'json',
-      headers: {
-        'Authorization': 'Bearer ' + token
-      },
-      success: function (posts) {
-        for (var i = 0; i < posts.length; i++) {
-          var obj = posts[i];
-          if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
-            var title = obj['title']['rendered'];
-            var res = obj['content']['rendered'].match(/[0-9\.]+/g);
-            var nodes = obj['acf']['node'].match(/[0-9\.]+/g);
-            for (var j = 0; j < nodes.length; j++) {
-              $("#list").append(createCard('移动'+j+'-北美', res[0], res[1], 'memcached', nodes[j]));
-            }
-          }
-        }
-      }
-    });
-    $.ajax({
-      url: encodeURI("http://www.zzyun.co/wp-json/wp/v2/posts?categories=31"),
-      type: 'GET',
-      dataType: 'json',
-      headers: {
-        'Authorization': 'Bearer ' + token
-      },
-      success: function (posts) {
-        for (var i = 0; i < posts.length; i++) {
-          var obj = posts[i];
-          if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
-            var title = obj['title']['rendered'];
-            var res = obj['content']['rendered'].match(/[0-9\.]+/g);
-            var nodes = obj['acf']['node'].match(/[0-9\.]+/g);
-            for (var j = 0; j < nodes.length; j++) {
-              $("#list").append(createCard('电信'+j+'-北美', res[0], res[1], 'redis', nodes[j]));
-            }
-          }
-        }
-        $("#my-loading").css("display","none");
-      }
-    });
-    $("#connecting").on('hidden.bs.modal', function(){
-      $('#connecting-body').html("正在连接<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
-    });
-  })();
-
-  function createCard(name, host, port,type,next) {
-    return "<div class=\"col-lg-4 col-md-12 mb-4\">\n" +
-      "            <div class=\"card\" style=\"height:372px;\">\n" +
-      "              <div class=\"view overlay\">\n" +
-      "                  <img src=\"../img/alpha.png\" class=\"card-img-top\">\n" +
-      "              </div>\n" +
-      "              <div class=\"card-body\">\n" +
-      "                <h4 class=\"card-title\">" + name + "</h4>\n" +
-      "                <button type=\"button\" class=\"btn btn-primary\" onclick=\"connect('" + name + "','" + host + "'," + port + ",'"+type+"','"+next+"')\">常规连接</button>\n" +
-      "              </div>\n" +
-      "            </div>\n" +
-      "          </div>";
-  }
-
-  function connect(name, host, port,type,next) {
-    $('#connecting').modal();
-    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type="+type+"&name=" + name + "&client-next=" + next, function (data) {
-      if (data != null && data !== '') {
-        $('#connecting-body').html('连接失败' + data);
-      } else {
-        $('#connecting-body').html('连接成功');
-      }
-    });
-  }
-</script>
 </body>
 
 </html>

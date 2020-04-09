@@ -1,7 +1,7 @@
 package co.zzyun.wsocks.client.core.client.impl
 
 import co.zzyun.wsocks.client.core.KCP
-import co.zzyun.wsocks.memcached.MemcachedClient
+import co.zzyun.wsocks.memcached.MemcachedWayClient
 import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
@@ -9,14 +9,14 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
 
 class MemcachedClientImpl(private val vertx: Vertx):IClientImpl {
-  private lateinit var memcachedClient: MemcachedClient
+  private lateinit var memcachedClient: MemcachedWayClient
   override fun stop() {
     memcachedClient.stop("offline")
   }
 
   override fun start(name: String, remoteHost: String, remotePort: Int, headers: JsonObject):Future<Void> {
     val fut = Future.future<Void>()
-    memcachedClient  = MemcachedClient(vertx,remoteHost)
+    memcachedClient  = MemcachedWayClient(vertx,remoteHost)
     memcachedClient.successHandler {
       println("Connection success")
       fut.complete()

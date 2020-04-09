@@ -14,20 +14,23 @@ import java.io.File
 val unitMap = HashMap<Long, TransportUnit>()
 
 fun main(args: Array<String>) {
-  val serverImpl = when(args[0]){
-    "memcached"->MemcachedReceiver()
-    "redis"->RedisReceiver()
-    "amqp"->AMQPReceiver()
-    else->WebSocketRecv()
-  }
-  val serverConfig = JsonObject(File(args[1]).readText())
+  val config = JsonObject(File(args[0]).readText())
   val vertxOptions = VertxOptions()
-  if(serverConfig.getBoolean("lowendbox")){
+  if(config.getBoolean("lowendbox")){
     vertxOptions.setEventLoopPoolSize(2)
       .setWorkerPoolSize(2)
       .internalBlockingPoolSize = 1
   }
   val vertx = Vertx.vertx(vertxOptions.setFileSystemOptions(FileSystemOptions()
     .setFileCachingEnabled(false).setClassPathResolvingEnabled(false)))
-  vertx.deployVerticle(serverImpl, DeploymentOptions().setConfig(serverConfig))
+  config.getJsonArray("servers").forEach {
+    it as JsonObject
+    val serverImpl = when(it.getString("core")){
+      "memcached"->MemcachedReceiver()
+      "redis"->RedisReceiver()
+      "amqp"->AMQPReceiver()
+      else->WebSocketRecv()
+    }
+    vertx.deployVerticle(serverImpl, DeploymentOptions().setConfig(it))
+  }
 }

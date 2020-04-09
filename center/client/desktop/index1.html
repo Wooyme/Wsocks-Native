@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SuperEngine-Login</title>
+  <link href="https://lib.baomitu.com/uikit/3.2.3/css/uikit.min.css" rel="stylesheet">
+</head>
+<body>
+<nav class="uk-navbar uk-navbar-container">
+  <div class="uk-navbar-left">
+    <ul class="uk-navbar-nav">
+      <li class="uk-active"><a href="#">SuperEngine</a></li>
+    </ul>
+  </div>
+</nav>
+<div style="margin-top: 40px;" class="uk-flex uk-flex-center">
+  <div style="width: 35%" class="uk-card uk-card-default uk-card-large">
+    <div class="uk-card-header uk-flex uk-flex-center">
+      <div class="uk-card-title">SuperEngine</div>
+    </div>
+    <div class="uk-card-body">
+      <div class="uk-margin">
+        <input id="username" class="uk-input" type="text" placeholder="Username">
+      </div>
+      <div class="uk-margin">
+        <div class="uk-flex uk-flex-right">
+          <a href="http://61.175.122.154:7988/wp-login.php?action=lostpassword">Forgot password?</a>
+        </div>
+        <input id="password" class="uk-input" type="password" placeholder="Password">
+      </div>
+    </div>
+    <div class="uk-card-footer uk-flex uk-flex-between">
+      <a class="uk-button uk-button-default" href="http://61.175.122.154:7988/wp-login.php?action=register">Register</a>
+      <button id="login" class="uk-button uk-button-primary" onclick="login()">系统维护</button>
+    </div>
+  </div>
+</div>
+<div id="fail-modal" class="uk-modal">
+  <div class="uk-modal-dialog uk-modal-body">
+    <h2 class="uk-modal-title">Sorry,Login failed</h2>
+    <p id="fail-modal-body"></p>
+    <p class="uk-text-right">
+      <button class="uk-button uk-button-default uk-modal-close" type="button">Cancel</button>
+    </p>
+  </div>
+</div>
+<div id="register-modal" class="uk-modal">
+  <div class="uk-modal-dialog uk-modal-body">
+    <h2 class="uk-modal-title">重新输入邮箱</h2>
+    <div class="uk-margin">
+      <input id="email" class="uk-input" type="text" placeholder="Email">
+    </div>
+    <p class="uk-text-right">
+      <button class="uk-button uk-button-default uk-modal-close" type="button" onclick="register()">确定</button>
+    </p>
+  </div>
+</div>
+<div id="update-modal" class="uk-modal">
+  <div class="uk-modal-dialog uk-modal-body">
+    <h2 class="uk-modal-title">有新版本</h2>
+    <div class="uk-margin">
+      <p>Linux(deb): http://61.175.122.154:7988/download/beta1.0.deb</p>
+      <p>Linux(rpm): http://61.175.122.154:7988/download/beta1.0.rpm</p>
+      <p>Windows: http://61.175.122.154:7988/download/beta1.0.zip</p>
+      <p>Android: http://61.175.122.154:7988/download/beta1.0.apk</p>
+    </div>
+    <p class="uk-text-right">
+      <button class="uk-button uk-button-default uk-modal-close" type="button" onclick="register()">确定</button>
+    </p>
+  </div>
+</div>
+<script src="https://lib.baomitu.com/uikit/3.2.3/js/uikit.min.js"></script>
+<script src="https://lib.baomitu.com/uikit/3.2.3/js/uikit-icons.min.js"></script>
+<script src="https://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script src="js/custom.js"></script>
+<script>
+  $.urlParam = function (name) {
+    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results == null) {
+      return null;
+    }
+    return decodeURI(results[1]) || 0;
+  };
+  window.onInjected = function(){
+    var code = engine.localRead("local.txt");
+    if (code != null) {
+      var json = JSON.parse(atob(code));
+      $("#username").val(json['user']);
+      $("#password").val(json['pass']);
+    }
+    $("#login").html("登录").prop("disabled", false);
+  };
+  (function (e) {
+    var user = $.urlParam("user");
+    var pass = $.urlParam("pass");
+    var code = $.urlParam("code");
+    if (code != null) {
+      var json = JSON.parse(atob(code));
+      user = json['user'];
+      pass = json['pass'];
+    }
+    if (user != null && user !== "") {
+      $("#username").val(user);
+      $("#password").val(pass);
+      login()
+    }
+    setTimeout(function(){
+      $.ajax({
+        url:"http://localhost:1078/test/redis",
+        type: 'HEAD',
+        dataType: 'json',
+        timeout: 500,
+        error:function(data){
+          if(data.status!==500){
+            UIkit.modal($("#update-modal")).show();
+          }
+        }
+      })
+    },1000);
+  })();
+
+  function login() {
+    var user = $('#username').val();
+    var pass = $('#password').val();
+    $.ajax({
+      url: encodeURI("http://61.175.122.154:7988/wp-json/jwt-auth/v1/token"),
+      type: 'POST',
+      dataType: 'json',
+      contentType: "application/json; charset=utf-8",
+      data: JSON.stringify({"username": user, "password": pass}),
+      success: function (data) {
+        var token = data["token"];
+        var code = btoa(JSON.stringify({"user": user, "pass": pass}));
+        if(window.engine){
+          engine.localSave("local.txt",code);
+        }
+        setCookie("code",code,1);
+        setCookie("token",token,1);
+        redirect(encodeURI("home/index.html"));
+      },
+      error: function (data) {
+        if(data.readyState===0){
+          login();
+        }else {
+          if(data['responseJSON']['message'].startsWith('Unknown username')){
+            UIkit.modal($("#register-modal")).show();
+          }else {
+            $("#fail-modal-body").html("<p>" + JSON.stringify(data) + "</p>");
+            UIkit.modal($("#fail-modal")).show();
+            $("#login").prop('disabled', false);
+          }
+        }
+      }
+    });
+    $("#login").prop('disabled', true);
+  }
+
+  function register(){
+    var user = $('#username').val();
+    var pass = $('#password').val();
+    var email = $('#email').val();
+    if(user.length===0 || pass.length===0 || email.length===0){
+      $("#fail-modal-body").html("<p>信息不完整</p>");
+      UIkit.modal($("#fail-modal")).show();
+      return;
+    }
+    $.ajax({
+      url: encodeURI("http://61.175.122.154:7988/api/get_nonce/?controller=user&method=register"),
+      type: 'GET',
+      dataType: 'json',
+      contentType: "application/json; charset=utf-8"
+    }).always(function(res){
+      var nonce = res.nonce;
+      $.ajax({
+        url: encodeURI("http://61.175.122.154:7988/api/user/register/?insecure=cool&nonce="+nonce+"&username=" +user
+          +"&user_pass="+pass+"&email="+email),
+        type: 'GET',
+        dataType: 'json',
+        contentType: "application/json; charset=utf-8"
+      }).always(function(res){
+        login();
+      });
+    });
+  }
+
+  function redirect(uri) {
+      if(window.engine){
+        engine.requestBackground(2*60*1000);
+      }
+      window.location.replace(uri);
+  }
+</script>
+</body>
+</html>

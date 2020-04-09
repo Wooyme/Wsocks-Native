@@ -10,29 +10,21 @@ import java.util.concurrent.ConcurrentHashMap
 
 class RedisServer(private val vertx: Vertx) {
   class ConnectInfo(private val vertx: Vertx,private val nextIp:String,private val id:String,val info: JsonObject){
-    companion object {
-      val clientMap = ConcurrentHashMap<String,RedisClient>()
-    }
     private lateinit var connection: RedisConnection
     fun reject(){
-      (clientMap[nextIp]?: RedisClient.create(vertx, RedisOptions().apply {
+      RedisClient.create(vertx, RedisOptions().apply {
         val remote = nextIp.split(":")
         this.host = remote[0]
         if(remote.size>1) this.port = remote[1].toInt()
-      }).also {
-        clientMap[nextIp]=it
-      }).setBinary(id,Buffer.buffer("reject")){}
+      }).setBinary(id,Buffer.buffer("reject")){}.close {}
     }
 
     fun connect():RedisConnection{
-      connection = RedisConnection(id,vertx,(clientMap[nextIp]?: RedisClient.create(vertx, RedisOptions().apply {
+      connection = RedisConnection(id,vertx,RedisClient.create(vertx, RedisOptions().apply {
         val remote = nextIp.split(":")
         this.host = remote[0]
         if(remote.size>1) this.port = remote[1].toInt()
-      }).also { clientMap[nextIp]=it }),info)
-      connection.stopHandler(Handler {
-        clientMap.remove(nextIp)
-      })
+      }),info)
       connection.start()
       return connection
     }

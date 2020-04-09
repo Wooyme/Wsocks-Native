@@ -1,20 +1,19 @@
 package co.zzyun.wsocks.server.receiver
 
 import co.zzyun.wsocks.KCP
-import co.zzyun.wsocks.memcached.MemcachedConnection
-import co.zzyun.wsocks.memcached.MemcachedServer
+import co.zzyun.wsocks.memcached.MemcachedWayServer
 import co.zzyun.wsocks.server.sender.MemcachedSender
 import io.vertx.core.Handler
 import io.vertx.core.net.SocketAddress
 
-class MemcachedReceiver:AbstractLongConnectionReceiver<MemcachedServer.ConnectInfo>(){
-  override fun initServer(handler: Handler<MemcachedServer.ConnectInfo>) {
+class MemcachedReceiver:AbstractLongConnectionReceiver<MemcachedWayServer.ConnectInfo>(){
+  override fun initServer(handler: Handler<MemcachedWayServer.ConnectInfo>) {
     senderMap["memcached"] = MemcachedSender()
-    val server = MemcachedServer(vertx)
+    val server = MemcachedWayServer(vertx)
     server.onConnect(handler).start(id,host)
   }
 
-  override fun handleLogin(conn: MemcachedServer.ConnectInfo): LoginInfo? {
+  override fun handleLogin(conn: MemcachedWayServer.ConnectInfo): LoginInfo? {
     val token = conn.info.getString("token")
     val host = conn.info.getString("host")?:"0.0.0.0"
     val port = conn.info.getInteger("port")?:1000
@@ -23,17 +22,23 @@ class MemcachedReceiver:AbstractLongConnectionReceiver<MemcachedServer.ConnectIn
     return LoginInfo(SocketAddress.inetSocketAddress(port, host), recvType, token, conv)
   }
 
-  override fun onConnected(conn: MemcachedServer.ConnectInfo, kcp: KCP) {
-    conn.connect().handler(Handler {
-      kcp.InputAsync(it)
-    })
+  override fun onConnected(conn: MemcachedWayServer.ConnectInfo, kcp: KCP) {
+    conn.connect().setHandler {
+      if(it.succeeded()){
+        it.result().handler(Handler {
+          kcp.InputAsync(it)
+        })
+      }else{
+        it.cause().printStackTrace()
+      }
+    }
   }
 
-  override fun onFailed(conn: MemcachedServer.ConnectInfo) {
+  override fun onFailed(conn: MemcachedWayServer.ConnectInfo) {
     conn.reject()
   }
 
-  override fun close(conn: MemcachedServer.ConnectInfo?, address: SocketAddress) {
+  override fun close(conn: MemcachedWayServer.ConnectInfo?, address: SocketAddress) {
     conn?.stop()
   }
 

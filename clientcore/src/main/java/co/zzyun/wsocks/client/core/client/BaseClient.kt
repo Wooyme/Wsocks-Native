@@ -7,14 +7,9 @@ import co.zzyun.wsocks.client.core.client.impl.MemcachedClientImpl
 import co.zzyun.wsocks.client.core.client.impl.RedisClientImpl
 import co.zzyun.wsocks.client.core.client.impl.WebsocketClientImpl
 import co.zzyun.wsocks.data.*
-import co.zzyun.wsocks.memcached.MemcachedClient
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Future
-import io.vertx.core.Handler
-import io.vertx.core.MultiMap
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.datagram.DatagramSocket
-import io.vertx.core.http.HttpClientOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.NetServer
 import io.vertx.core.net.NetSocket

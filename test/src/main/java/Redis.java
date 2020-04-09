@@ -61,14 +61,10 @@ public class Redis {
               runnable.run();
             }else{
               dataList.sort(Comparator.comparingInt(d -> d.lag));
-              dataList.forEach(v->{
-                System.out.println(v.toString());
-              });
+              dataList.forEach(v-> System.out.println(v.toString()));
             }
           });
-          vertx.setTimer(1000,t->{
-            fut.tryFail(finalLine+":超时");
-          });
+          vertx.setTimer(1000,t-> fut.tryFail(finalLine+":超时"));
         });
       }
     }
