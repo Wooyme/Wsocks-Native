@@ -21,6 +21,15 @@
 </nav>
 <div class="uk-margin-right uk-margin-left uk-margin-top uk-text-center">
   <div id="my-loader" uk-spinner="ratio: 3"></div>
+  <div>
+    <a href="javascript:void(0)" onclick="openLikeList()">收藏夹</a>&nbsp;
+    <a href="javascript:void(0)" onclick="openBanList()">黑名单</a>
+  </div>
+  <div id="vote" style="display: none">
+    <span id="vote-node">评价最近使用的通道()</span>
+    <a href="javascript:void(0)" onclick="likeNode()">收藏</a>&nbsp;
+    <a href="javascript:void(0)" onclick="banNode()">拉黑</a>
+  </div>
   <div id="list" class="uk-grid">
 
   </div>
@@ -30,12 +39,12 @@
 </div>
 <div id="connecting-modal" class="uk-modal">
   <div class="uk-modal-dialog uk-modal-body">
-    <h2 class="uk-modal-title">提示</h2>
+    <h2 id="connecting-modal-header" class="uk-modal-title">提示</h2>
     <div id="connecting-modal-body">
-      正在连接<div uk-spinner></div>
+
     </div>
     <p class="uk-text-right">
-      <button class="uk-button uk-button-default uk-modal-close" type="button">确定</button>
+      <button class="uk-button uk-button-default uk-modal-close" type="button" onclick="onModalButtonClick()">确定</button>
     </p>
   </div>
 </div>
@@ -68,6 +77,38 @@
 </div>
 <script src="../js/custom.js"></script>
 <script>
+  var connect_info;
+  var banList = [];
+  var likeListM = [];
+  var likeListR = [];
+  window.onInjected = function(){
+    var connectInfo = engine.localRead("connect_info.txt");
+    var ban = engine.localRead("banList.txt");
+    var likeM = engine.localRead("likeListM.txt");
+    var likeR = engine.localRead("likeListR.txt");
+    if(ban){
+      try {
+        banList = JSON.parse(ban);
+      }catch(e){}
+    }
+    if(likeM){
+      try{
+        likeListM = JSON.parse(likeM);
+      }catch (e) {}
+    }
+    if(likeR){
+      try{
+        likeListR = JSON.parse(likeR);
+      }catch (e) {}
+    }
+    if(connectInfo){
+      try {
+        connect_info = JSON.parse(connectInfo);
+        $("#vote-node").html("评价最近使用的通道("+connect_info.node+")");
+        $("#vote").css("display", "block");
+      }catch(e){}
+    }
+  };
   $.urlParam = function (name) {
     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
     if (results == null) {
@@ -93,12 +134,12 @@
       }
     });
     $.when($.ajax({
-      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=3"),
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=2"),
       type: 'GET',
       dataType: 'json',
       headers: {'Authorization': 'Bearer ' + token}
     }),$.ajax({
-      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=2"),
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=3"),
       type: 'GET',
       dataType: 'json',
       headers: {'Authorization': 'Bearer ' + token}
@@ -141,51 +182,81 @@
       "      <div class=\"uk-card-footer\">" +
       "         <p class=\"uk-text-center\">" + name +
       "         </p>" +
-      "         <div class=\"uk-text-center\">" +
-      "          <button class=\"uk-button uk-button-primary\" onclick=\"findNode('" + name + "','" + host + "'," + port + ",'"+type+"')\">连接</button>" +
+      "         <div>" +
+      "          <button class=\"uk-button uk-button-primary uk-align-left\" onclick=\"findNode('" + name + "','" + host + "'," + port + ",'"+type+"')\">自动连接</button>" +
+      "          <button class=\"uk-button uk-button-primary uk-align-right\" onclick=\"manualSelect('" + name + "','" + host + "'," + port + ",'"+type+"')\">手动连接</button>" +
       "        </div>" +
       "      </div>" +
       "    </div>" +
       "  </div>"
   }
 
+  function manualSelect(name,host,port,type){
+    switch (type) {
+      case "memcached":
+        if(likeListM.length===0){
+          openModal("收藏夹","收藏夹为空");
+          return;
+        }
+        var list = likeListM
+          .map(function(v){ return '<li><a href="javascript:void(0)" onclick="connect(\''+name+'\',\''+host+'\',\''+port+'\',\''+type+'\',\''+v+'\')">'+v+'</a></li>' })
+          .join("");
+        var body = '<ul class="uk-list uk-list-divider">'+list+'</ul>';
+        openModal("收藏夹",body);
+        break;
+      case "redis":
+        if(likeListR.length===0){
+          openModal("收藏夹","收藏夹为空");
+          return;
+        }
+        var list = likeListR
+          .map(function(v){ return '<li><a href="javascript:void(0)" onclick="connect(\''+name+'\',\''+host+'\',\''+port+'\',\''+type+'\',\''+v+'\')">'+v+'</a></li>' })
+          .join("");
+        var body = '<ul class="uk-list uk-list-divider">'+list+'</ul>';
+        openModal("收藏夹",body);
+        break;
+    }
+  }
+
   function findNode(name,host,port,type){
     switch (type) {
       case "memcached":
         $.ajax({
-          url: encodeURI("http://67.165.122.154:7988/client/memcached.json"),
+          url: encodeURI("http://120.53.27.21/client/memcached.json"),
           type: 'GET',
           dataType: 'json'
         }).always(function(res){
-          nodeTest(name,host,port,type,res);
+          nodeTest(name,host,port,type,likeListM.concat(res));
         });
         break;
       case "redis":
         $.ajax({
-          url: encodeURI("http://67.165.122.154:7988/client/redis.json"),
+          url: encodeURI("http://120.53.27.21/client/redis.json"),
           type: 'GET',
           dataType: 'json'
         }).always(function(res){
-          nodeTest(name,host,port,type,res);
+          nodeTest(name,host,port,type,likeListR.concat(res));
         });
         break;
     }
   }
 
   function nodeTest(name,host,port,type,nodes){
-    $("#connecting-modal-body").html("正在寻找合适的中继通道,大约需要10s左右<div uk-spinner></div>");
-    UIkit.modal($("#connecting-modal")).show();
+    var filtered_nodes = nodes.filter(function(v){
+      return banList.indexOf(v)<0
+    });
+    openModal("提示","正在寻找合适的中继通道,大约需要10s左右<div uk-spinner></div>");
     $.ajax({
       url:"http://localhost:1078/test/"+type,
       type: 'POST',
       dataType: 'json',
       contentType: 'application/json',
-      data: JSON.stringify(nodes)
+      data: JSON.stringify(filtered_nodes)
     }).always(function(res){
       if(res.status===1){
         connect(name,host,port,type,res.ip);
       }else{
-        $("#connecting-modal-body").html("无可用的中继通道("+JSON.stringify(res)+")");
+        openModal("提示","无可用的中继通道("+JSON.stringify(res)+")");
       }
     })
   }
@@ -193,12 +264,13 @@
   function connect(name, host, port, type, next) {
     $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type="+type+"&name=" + name + "&client-next=" + next, function (data) {
       if (data != null && data !== '') {
-        $("#connecting-modal-body").html("连接失败," + data)
+        openModal("提示","连接失败," + data)
       } else {
-        $("#connecting-modal-body").html("连接成功")
+        openModal("提示","连接成功");
+        engine.localSave("connect_info.txt",JSON.stringify({"name":name,"host":host,"port":port,"type":type,"node":next}));
       }
     });
-    $("#connecting-modal-body").html("正在连接<div uk-spinner></div>");
+    openModal("提示","正在连接<div uk-spinner></div>");
   }
 
   function setting(){
@@ -230,6 +302,81 @@
       contentType:'application/json',
       data:JSON.stringify(data)
     }).always(function(res){});
+  }
+  function banNode(){
+    var node = connect_info.node;
+    if(node){
+      openModal("提示","拉黑该通道后，程序将不会再分配该通道。被多名用户拉黑的通道将从通道列表中删除。",function(){
+        banList.push(node);
+        engine.localSave("banlist.txt",JSON.stringify(banList));
+        findNode(connect_info.name,connect_info.host,connect_info.port,connect_info.type);
+      });
+    }
+  }
+
+  function likeNode(){
+    var node = connect_info.node;
+    if(node){
+      openModal("提示","收藏通道后，通道会在本地保存，不会因远程列表的更新而消失。",function(){
+        if(connect_info.type==="memcached"){
+          likeListM.push(node);
+          engine.localSave("likeListM.txt",JSON.stringify(likeListM));
+        }else if(connect_info.type==="redis"){
+          likeListR.push(node);
+          engine.localSave("likeListR.txt",JSON.stringify(likeListR));
+        }
+      });
+    }
+  }
+
+  function deleteLikeNode(i,type){
+    var nodes;
+    var file;
+    if(type==="memcached"){
+      nodes = likeListM;
+      file = "likeListM.txt";
+    }else if(type==="redis"){
+      nodes = likeListR;
+      file = "likeListR.txt";
+    }
+    nodes.splice(i,1);
+    engine.localSave(file,JSON.stringify(nodes));
+  }
+
+  function deleteBanNode(i){
+    banList.splice(i,1);
+    engine.localSave("banList.txt",JSON.stringify(banList));
+    openBanList();
+  }
+
+  function openLikeList(){
+    var listM = likeListM
+      .map(function(v,index){ return '<li><span>'+v+'</span><a href="javascript:void(0)" onclick="deleteLikeNode('+index+',\'memcached\')">删除</a></li>' })
+      .join("");
+    var listR = likeListR
+      .map(function(v,index){ return '<li><span>'+v+'</span><a href="javascript:void(0)" onclick="deleteLikeNode('+index+',\'redis\')">删除</a></li>' })
+      .join("");
+    var body = '<ul class="uk-list-divider"><li>M-</li>'+listM+'<li>R-</li>'+listR+'</ul>';
+    openModal('收藏夹',body)
+  }
+
+  function openBanList(){
+    var list = banList
+      .map(function(v,index){ return '<li><span>'+v+'</span><a href="javascript:void(0)" onclick="deleteBanNode('+index+')">删除</a></li>' })
+      .join("");
+    var body = '<ul class="uk-list-divider">'+list+'</ul>';
+    openModal('黑名单',body);
+  }
+
+  function openModal(header,body,callback){
+    UIkit.modal($("#connecting-modal")).hide();
+    $('#connecting-modal-header').html(header);
+    $('#connecting-modal-body').html(body);
+    if(callback)
+      window.onModalButtonClick = callback;
+    else
+      window.onModalButtonClick = function(){};
+    UIkit.modal($("#connecting-modal")).show();
   }
 </script>
 </body>

@@ -126,12 +126,12 @@
       }
     });
     $.when($.ajax({
-      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=3"),
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=2"),
       type: 'GET',
       dataType: 'json',
       headers: {'Authorization': 'Bearer ' + token}
     }),$.ajax({
-      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=2"),
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=3"),
       type: 'GET',
       dataType: 'json',
       headers: {'Authorization': 'Bearer ' + token}
@@ -187,7 +187,7 @@
     switch (type) {
       case "memcached":
         $.ajax({
-          url: encodeURI("http://67.165.122.154:7988/client/memcached.json"),
+          url: encodeURI("http://120.53.27.21/client/memcached.json"),
           type: 'GET',
           dataType: 'json'
         }).always(function(res){
@@ -196,7 +196,7 @@
         break;
       case "redis":
         $.ajax({
-          url: encodeURI("http://67.165.122.154:7988/client/redis.json"),
+          url: encodeURI("http://120.53.27.21/client/redis.json"),
           type: 'GET',
           dataType: 'json'
         }).always(function(res){
@@ -219,7 +219,7 @@
       if(res.status===1){
         connect(name,host,port,type,res.ip);
       }else{
-        $("#connecting-modal-body").html("无可用的中继通道("+JSON.stringify(res)+")");
+        $("#connecting-body").html("无可用的中继通道("+JSON.stringify(res)+")");
       }
     })
   }

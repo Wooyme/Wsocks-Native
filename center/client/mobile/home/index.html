@@ -164,7 +164,7 @@
       }
     });
     $.ajax({
-      url: encodeURI("http://61.175.122.154:7988/wp-json/wp/v2/posts?categories=4"),
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=4"),
       type: 'GET',
       dataType: 'json',
       headers:{
@@ -194,10 +194,10 @@
 
   function createCard(name, host, port, lag) {
     var img;
-    if (name.includes("RU")) {
+    if (name.includes("ru")) {
       img = "../img/rus.jpeg";
     }
-    if (name.includes("USA")) {
+    if (name.includes("us")) {
       img = "../img/us.jpeg";
     }
     var signal;

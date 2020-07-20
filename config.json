@@ -2,20 +2,20 @@
   "lowendbox": true,
   "servers": [
     {
-      "id": "45",
+      "id": "11",
       "core": "memcached",
-      "host": "156.249.51.245",
-      "login": 37,
+      "host": "182.236.88.235",
+      "login": 45,
       "maxWaitSnd": 8000,
       "WndSize": 256,
       "mtu": 1200,
       "center": {
-        "host": "61.175.122.154",
-        "port": 7988
+        "host": "120.53.27.21",
+        "port": 80
       }
     },
     {
-      "id": "47",
+      "id": "15",
       "core": "redis",
       "host": "103.101.179.233",
       "login": 34,
@@ -23,10 +23,9 @@
       "WndSize": 256,
       "mtu": 1200,
       "center": {
-        "host": "61.175.122.154",
-        "port": 7988
+        "host": "120.53.27.21",
+        "port": 80
       }
     }
   ]
 }
-
