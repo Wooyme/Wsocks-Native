@@ -64,7 +64,6 @@ class WebTest : AbstractVerticle() {
 
   private fun handleRequest(req: HttpServerRequest) {
     val url = String(base64Decode(req.getParam("url")))
-    //val params = JsonObject(String(base64Decoder.decode(req.getParam("params"))))
     val body = req.getParam("body")?.let {
       Buffer.buffer(base64Decode(it))
     }
@@ -90,27 +89,29 @@ class WebTest : AbstractVerticle() {
       proxyReq.putHeader(it.key, it.value as String)
     }
     proxyReq.handler {
-      val isHtml = it.getHeader("content-type").startsWith("text/html")
-      it.headers().forEach {
-        if (it.key.toLowerCase() != "content-length")
+      val isText = it.getHeader("content-type").startsWith("text/")
+      it.headers().filter {
+        it.key.toLowerCase()!="content-length"
+      }.forEach {
           req.response().putHeader(it.key, it.value)
-        else {
-          if (isHtml) {
-            req.response().putHeader("Content-Length", (it.value.toInt() + payload.length).toString())
-          } else {
-            req.response().putHeader(it.key, it.value)
+      }
+      if(isText){
+        val isHtml = it.getHeader("content-type").startsWith("text/html")
+        it.bodyHandler {
+          if(isHtml){
+            val htmlToken = it.toString(Charset.defaultCharset()).replace("<head>", "<head>$payload")
+            req.response().end(Buffer.buffer(htmlToken))
+          }else{
+            req.response().end(it)
           }
         }
-      }
-      it.handler {
-        if (isHtml) {
-          val htmlToken = it.toString(Charset.defaultCharset()).replace("<head>", "<head>$payload")
-          req.response().write(htmlToken)
-        } else {
+      }else {
+        req.response().putHeader("Content-Length",it.getHeader("Content-Length"))
+        it.handler {
           req.response().write(it)
+        }.endHandler {
+          req.response().end()
         }
-      }.endHandler {
-        req.response().end()
       }
     }
     if (body != null) {

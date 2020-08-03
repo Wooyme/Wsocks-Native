@@ -26,29 +26,20 @@
     [domain,protocol] = domainFromUrl(url);
 
     let iframe = document.createElement('iframe');
-    iframe.onload = function(){
-      alert(iframe.src);
-      if(!iframe.src.startsWith(base)) {
-        if (iframe.src.startsWith(myDomain)) {
-          iframe.src = base + '?url=' + base64Encode(iframe.src.replace(myDomain, domain)) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
-        }else{
-          iframe.src = base + '?url=' + base64Encode(iframe.src) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
-        }
-      }
-    }
     iframe.width = screen.width;
     iframe.height = screen.height;
     iframe.src = base+'?url='+base64Encode(url)+'&headers='+base64Encode(JSON.stringify(basicHeaders))+'&method=GET';
-    iframeURLChange(iframe,function(url){
+    document.body.appendChild(iframe);
+    detectNavigation(iframe,function(url){
       if(!url.startsWith(base)) {
         if (url.startsWith(myDomain)) {
-          iframe.src = base + '?url=' + base64Encode(url.replace(myDomain, domain)) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
+          iframe.src = base + '?url=' + base64Encode(url.replace(myDomain, protocol+domain)) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
         }else{
+          [domain,protocol] = domainFromUrl(url);
           iframe.src = base + '?url=' + base64Encode(url) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
         }
       }
     })
-    document.body.appendChild(iframe);
   }
 
   function base64Encode(str){
@@ -61,24 +52,19 @@
     }
     return [null,null];
   }
-  function iframeURLChange(iframe, callback) {
-    let unloadHandler = function () {
-      // Timeout needed because the URL changes immediately after
-      // the `unload` event is dispatched.
+
+  function detectNavigation(iframe,callback){
+    let eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+    let eventer = window[eventMethod];
+    let messageEvent = eventMethod === "attachEvent" ? "onmessage" : "message";
+
+    eventer(messageEvent,function(e) {
+      let key = e.message ? "message" : "data";
+      let data = e[key];
       setTimeout(function () {
         callback(iframe.contentWindow.location.href);
-      }, 0);
-    };
-
-    function attachUnload() {
-      // Remove the unloadHandler in case it was already attached.
-      // Otherwise, the change will be dispatched twice.
-      iframe.contentWindow.removeEventListener("unload", unloadHandler);
-      iframe.contentWindow.addEventListener("unload", unloadHandler);
-    }
-
-    iframe.addEventListener("load", attachUnload);
-    attachUnload();
+      }, 10);
+    },false);
   }
 </script>
 </body>

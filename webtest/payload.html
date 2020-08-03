@@ -33,6 +33,9 @@
   function replaceUrl(element,attr) {
     let src = element.getAttribute(attr);
     if(src && src.length>0) {
+      if(src.startsWith("data:")){
+        return;
+      }
       const [domain, protocol] = domainFromUrl(src);
       if (!protocol && domain) {
         src = parent.protocol + src;
@@ -68,5 +71,9 @@
     document.querySelectorAll("video").forEach(v=>replaceUrl(v,"src"));
     document.querySelectorAll("script").forEach(v=>replaceUrl(v,"src"));
     document.querySelectorAll("link").forEach(v=>replaceUrl(v,"href"));
+  });
+  window.addEventListener('unload', function(event) {
+    console.log('unload');
+    parent.postMessage("navigation","*");
   });
 </script>
