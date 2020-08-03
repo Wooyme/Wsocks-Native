@@ -1,0 +1,72 @@
+<script>
+  const basicHeaders = {
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    'accept-encoding': '',
+    'accept-language': 'zh,zh-CN;q=0.9,ja;q=0.8,zh-TW;q=0.7',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
+  };
+
+  function domainFromUrl(url) {
+    const match = url.match(/^(https?:)?\/\/([^\/]+)/im);
+    if (match) {
+      return [match[2], match[1]];
+    }
+    return [null, null];
+  }
+
+  function uponPathFromUrl(url) {
+    const match = url.match(/^https?:\/\/([\S]+\/)/im);
+    if(match){
+      return match[1];
+    }
+    return null;
+  }
+
+  function base64Encode(str) {
+    return btoa(str).replace('+', '.').replace('/', '_').replace('=', '-');
+  }
+
+  function base64Decode(str) {
+    return atob(str.replace('.', '+').replace('_', '/').replace('-', '='));
+  }
+  let myLocation = null;
+  function replaceUrl(element,attr) {
+    let src = element.getAttribute(attr);
+    if(src && src.length>0) {
+      const [domain, protocol] = domainFromUrl(src);
+      if (!protocol && domain) {
+        src = parent.protocol + src;
+      }
+      if (!domain) {
+        if (myLocation == null) {
+          myLocation = uponPathFromUrl(base64Decode(new URL(window.location.href).searchParams.get('url')));
+        }
+        src = parent.protocol + '//' + parent.domain + src.startsWith("/") ? src : (myLocation + src);
+      }
+      let uri = base64Encode(src);
+      console.log(parent.base);
+      element.setAttribute(attr, parent.base+"?url=" + uri + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET');
+    }
+  }
+
+  window.XMLHttpRequest0 = XMLHttpRequest;
+  window.XMLHttpRequest = function () {
+     return new XMLHttpRequest0();
+  }
+  let observer = new MutationObserver(function (m) {
+  });
+  window.addEventListener('DOMContentLoaded', (event) => {
+    observer.observe(document.querySelector('body'), {
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
+      attributeOldValue: true,
+      characterDataOldValue: true
+    });
+    document.querySelectorAll("img").forEach(v=>replaceUrl(v,"src"));
+    document.querySelectorAll("video").forEach(v=>replaceUrl(v,"src"));
+    document.querySelectorAll("script").forEach(v=>replaceUrl(v,"src"));
+    document.querySelectorAll("link").forEach(v=>replaceUrl(v,"href"));
+  });
+</script>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WSocks Web</title>
+</head>
+<body>
+<div>
+  <label>Url:</label>
+  <input id="url" type="text">
+  <button onclick="goto()">Go</button>
+</div>
+<script>
+  var myDomain = 'http://localhost:8090';
+  var base = myDomain+'/proxy';
+  var domain;
+  var protocol;
+  function goto(){
+    const basicHeaders = {
+      'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+      'accept-encoding':'',
+      'accept-language':'zh,zh-CN;q=0.9,ja;q=0.8,zh-TW;q=0.7',
+      'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
+    };
+    let url = document.getElementById("url").value;
+    [domain,protocol] = domainFromUrl(url);
+
+    let iframe = document.createElement('iframe');
+    iframe.onload = function(){
+      alert(iframe.src);
+      if(!iframe.src.startsWith(base)) {
+        if (iframe.src.startsWith(myDomain)) {
+          iframe.src = base + '?url=' + base64Encode(iframe.src.replace(myDomain, domain)) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
+        }else{
+          iframe.src = base + '?url=' + base64Encode(iframe.src) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
+        }
+      }
+    }
+    iframe.width = screen.width;
+    iframe.height = screen.height;
+    iframe.src = base+'?url='+base64Encode(url)+'&headers='+base64Encode(JSON.stringify(basicHeaders))+'&method=GET';
+    iframeURLChange(iframe,function(url){
+      if(!url.startsWith(base)) {
+        if (url.startsWith(myDomain)) {
+          iframe.src = base + '?url=' + base64Encode(url.replace(myDomain, domain)) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
+        }else{
+          iframe.src = base + '?url=' + base64Encode(url) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
+        }
+      }
+    })
+    document.body.appendChild(iframe);
+  }
+
+  function base64Encode(str){
+    return btoa(str).replace('+','.').replace('/','_').replace('=','-');
+  }
+  function domainFromUrl(url) {
+    const match=url.match(/^(https?:\/\/)([^\/]+)/im);
+    if(match){
+      return [match[2], match[1]];
+    }
+    return [null,null];
+  }
+  function iframeURLChange(iframe, callback) {
+    let unloadHandler = function () {
+      // Timeout needed because the URL changes immediately after
+      // the `unload` event is dispatched.
+      setTimeout(function () {
+        callback(iframe.contentWindow.location.href);
+      }, 0);
+    };
+
+    function attachUnload() {
+      // Remove the unloadHandler in case it was already attached.
+      // Otherwise, the change will be dispatched twice.
+      iframe.contentWindow.removeEventListener("unload", unloadHandler);
+      iframe.contentWindow.addEventListener("unload", unloadHandler);
+    }
+
+    iframe.addEventListener("load", attachUnload);
+    attachUnload();
+  }
+</script>
+</body>
+</html>
