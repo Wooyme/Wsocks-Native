@@ -51,9 +51,7 @@
       attributes: true,
       characterData: true,
       childList: true,
-      subtree: true,
-      attributeOldValue: true,
-      characterDataOldValue: true
+      subtree: true
     });
     document.querySelectorAll("img").forEach(v => replaceUrl(v, "src"));
     document.querySelectorAll("video").forEach(v => replaceUrl(v, "src"));

@@ -27,7 +27,6 @@ class WebTest : AbstractVerticle() {
   private val httpServerPort by lazy { config().getInteger("http_port") }
   private val logger = LoggerFactory.getLogger(this::class.java)
 
-  //private val webClient by lazy { WebClient.create(vertx) }
   private val httpClient by lazy { vertx.createHttpClient(HttpClientOptions().setKeepAlive(false)) }
   private val basicHeader by lazy {
     config().getJsonObject("headers")
@@ -41,8 +40,8 @@ class WebTest : AbstractVerticle() {
 
   override fun start() {
     super.start()
-    vertx.createHttpServer().requestHandler {
 
+    vertx.createHttpServer().requestHandler {
       try {
         when {
           it.path().startsWith("/proxy") -> {
@@ -103,7 +102,7 @@ class WebTest : AbstractVerticle() {
       proxyReq.handler {
         val isText = it.getHeader("Content-Type").startsWith("text/")
         it.headers().filter {
-          it.key != "Content-Length"
+          it.key != "Content-Length" && it.key!="Set-Cookie"
         }.forEach {
           req.response().putHeader(it.key, it.value)
         }
