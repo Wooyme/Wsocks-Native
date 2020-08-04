@@ -1,62 +1,50 @@
 <script>
-  const basicHeaders = {
-    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    'accept-encoding': '',
-    'accept-language': 'zh,zh-CN;q=0.9,ja;q=0.8,zh-TW;q=0.7',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
-  };
-
-  function domainFromUrl(url) {
-    const match = url.match(/^(https?:)?\/\/([^\/]+)/im);
-    if (match) {
-      return [match[2], match[1]];
-    }
-    return [null, null];
-  }
-
-  function uponPathFromUrl(url) {
-    const match = url.match(/^https?:\/\/([\S]+\/)/im);
-    if(match){
-      return match[1];
-    }
-    return null;
-  }
-
-  function base64Encode(str) {
-    return btoa(str).replace('+', '.').replace('/', '_').replace('=', '-');
-  }
-
-  function base64Decode(str) {
-    return atob(str.replace('.', '+').replace('_', '/').replace('-', '='));
-  }
-  let myLocation = null;
-  function replaceUrl(element,attr) {
+  function replaceUrl(element, attr) {
     let src = element.getAttribute(attr);
-    if(src && src.length>0) {
-      if(src.startsWith("data:")){
+    if (src && src.length > 0 && !src.startsWith(parent.base)) {
+      if (src.startsWith("data:")) {
         return;
       }
-      const [domain, protocol] = domainFromUrl(src);
-      if (!protocol && domain) {
-        src = parent.protocol + src;
-      }
-      if (!domain) {
-        if (myLocation == null) {
-          myLocation = uponPathFromUrl(base64Decode(new URL(window.location.href).searchParams.get('url')));
-        }
-        src = parent.protocol + '//' + parent.domain + src.startsWith("/") ? src : (myLocation + src);
-      }
-      let uri = base64Encode(src);
-      console.log(parent.base);
-      element.setAttribute(attr, parent.base+"?url=" + uri + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET');
+      element.setAttribute(attr, parent.parseURL('GET', src));
     }
   }
 
   window.XMLHttpRequest0 = XMLHttpRequest;
+  const XMLHttpRequest0Handler = {
+    get: function (obj, prop) {
+      console.log(prop);
+      if (prop === 'send') {
+        return obj[prop];
+      } else
+        return obj[prop];
+    }
+  };
+  delete window.XMLHttpRequest;
   window.XMLHttpRequest = function () {
-     return new XMLHttpRequest0();
+    return new Proxy(new XMLHttpRequest0(), XMLHttpRequest0Handler);
   }
   let observer = new MutationObserver(function (m) {
+    m.forEach(record => {
+      let replaceList = [];
+      replaceList.push(record.target);
+      replaceList.concat(record.addedNodes);
+      replaceList.forEach(node => {
+        switch (node.nodeName.toLowerCase()) {
+          case "img":
+          case "video":
+          case "script":
+            replaceUrl(node, "src");
+            break;
+          case "link":
+          case "a":
+            replaceUrl(node, "href");
+            break;
+          case "form":
+            replaceUrl(node, "action");
+            break;
+        }
+      })
+    })
   });
   window.addEventListener('DOMContentLoaded', (event) => {
     observer.observe(document.querySelector('body'), {
@@ -67,13 +55,14 @@
       attributeOldValue: true,
       characterDataOldValue: true
     });
-    document.querySelectorAll("img").forEach(v=>replaceUrl(v,"src"));
-    document.querySelectorAll("video").forEach(v=>replaceUrl(v,"src"));
-    document.querySelectorAll("script").forEach(v=>replaceUrl(v,"src"));
-    document.querySelectorAll("link").forEach(v=>replaceUrl(v,"href"));
+    document.querySelectorAll("img").forEach(v => replaceUrl(v, "src"));
+    document.querySelectorAll("video").forEach(v => replaceUrl(v, "src"));
+    document.querySelectorAll("script").forEach(v => replaceUrl(v, "src"));
+    document.querySelectorAll("link").forEach(v => replaceUrl(v, "href"));
+    document.querySelectorAll("a").forEach(v => replaceUrl(v, "href"));
+    document.querySelectorAll("form").forEach(v => replaceUrl(v, "action"))
   });
-  window.addEventListener('unload', function(event) {
-    console.log('unload');
-    parent.postMessage("navigation","*");
+  window.addEventListener('unload', function (event) {
+    parent.postMessage("navigation", "*");
   });
 </script>

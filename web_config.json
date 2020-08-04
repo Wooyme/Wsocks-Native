@@ -1,5 +1,11 @@
 {
   "http_port": 8090,
   "payload": "webtest/payload.html",
-  "index": "webtest/index.html"
+  "index": "webtest/index.html",
+  "headers": {
+    "accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    "accept-encoding":"",
+    "accept-language":"zh,zh-CN;q=0.9,ja;q=0.8,zh-TW;q=0.7",
+    "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36"
+  }
 }

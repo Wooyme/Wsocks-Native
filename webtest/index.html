@@ -7,7 +7,7 @@
 <body>
 <div>
   <label>Url:</label>
-  <input id="url" type="text">
+  <input id="url" type="text" value="https://www.baidu.com">
   <button onclick="goto()">Go</button>
 </div>
 <script>
@@ -15,42 +15,48 @@
   var base = myDomain+'/proxy';
   var domain;
   var protocol;
+  var iframe;
   function goto(){
-    const basicHeaders = {
-      'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-      'accept-encoding':'',
-      'accept-language':'zh,zh-CN;q=0.9,ja;q=0.8,zh-TW;q=0.7',
-      'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
-    };
     let url = document.getElementById("url").value;
     [domain,protocol] = domainFromUrl(url);
-
-    let iframe = document.createElement('iframe');
+    iframe = document.createElement('iframe');
     iframe.width = screen.width;
     iframe.height = screen.height;
-    iframe.src = base+'?url='+base64Encode(url)+'&headers='+base64Encode(JSON.stringify(basicHeaders))+'&method=GET';
+    iframe.src = parseURL('GET',url)
     document.body.appendChild(iframe);
     detectNavigation(iframe,function(url){
       if(!url.startsWith(base)) {
-        if (url.startsWith(myDomain)) {
-          iframe.src = base + '?url=' + base64Encode(url.replace(myDomain, protocol+domain)) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
-        }else{
-          [domain,protocol] = domainFromUrl(url);
-          iframe.src = base + '?url=' + base64Encode(url) + '&headers=' + base64Encode(JSON.stringify(basicHeaders)) + '&method=GET';
+        const [_domain,_protocol] = domainFromUrl(url);
+        console.log(_domain);
+        if(_domain!=null){
+          if(myDomain.indexOf(_domain)>0){
+            url = url.replace(_domain,domain);
+            console.log(url);
+          }else{
+            domain = _domain;
+          }
         }
+        if(_protocol!=null){
+          protocol = _protocol;
+        }
+        iframe.src = parseURL('GET',url);
       }
     })
   }
-
-  function base64Encode(str){
-    return btoa(str).replace('+','.').replace('/','_').replace('=','-');
-  }
   function domainFromUrl(url) {
-    const match=url.match(/^(https?:\/\/)([^\/]+)/im);
+    const match=url.match(/^(https?)?:?\/\/([^\/]+)/im);
     if(match){
       return [match[2], match[1]];
     }
     return [null,null];
+  }
+
+  function uponPathFromUrl(url) {
+    const match = url.match(/^([\S]+\/)/im);
+    if(match){
+      return match[1];
+    }
+    return null;
   }
 
   function detectNavigation(iframe,callback){
@@ -61,10 +67,39 @@
     eventer(messageEvent,function(e) {
       let key = e.message ? "message" : "data";
       let data = e[key];
-      setTimeout(function () {
-        callback(iframe.contentWindow.location.href);
-      }, 10);
+      console.log(data);
+      if(data==='navigation') {
+        setTimeout(function () {
+          callback(iframe.contentWindow.location.href);
+        }, 10);
+      }
     },false);
+  }
+
+  function parseURL(method,old){
+    let url = base+'/'+method;
+    let [_domain, _protocol] = domainFromUrl(old);
+    if(!_protocol){
+      url+='/'+protocol;
+      if(!_domain){
+        url+='/'+domain;
+        if(old.startsWith('/')){
+          //old = "/asd/123"
+          url+=old;
+        }else{
+          //old = "asd/123"
+          let myLocation = uponPathFromUrl(iframe.contentWindow.location.href.replace(base,''));
+          url+=myLocation+old;
+        }
+      }else{
+        // old="//www.baidu.com/asd/123"
+        url+='/'+_domain+'/'+old.substr(2+_domain.length+1,old.length);
+      }
+    }else{
+      // old="https://www.baidu.com/asd/123"
+      url+='/'+_protocol+'/'+_domain+'/'+old.substr(_protocol.length+3+_domain.length+1,old.length);
+    }
+    return url;
   }
 </script>
 </body>

@@ -9,10 +9,12 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import java.io.File
 import java.io.FileNotFoundException
+import java.lang.IllegalArgumentException
 import java.nio.charset.Charset
 import java.util.*
 
 class WebTest : AbstractVerticle() {
+  data class ProxyRequest(val method:String,val protocol:String,val domain:String,val uri:String)
   companion object {
     private val base64Decoder = Base64.getDecoder()
     private fun base64Decode(string: String): ByteArray {
@@ -27,6 +29,9 @@ class WebTest : AbstractVerticle() {
 
   //private val webClient by lazy { WebClient.create(vertx) }
   private val httpClient by lazy { vertx.createHttpClient(HttpClientOptions().setKeepAlive(false)) }
+  private val basicHeader by lazy {
+    config().getJsonObject("headers")
+  }
   private val payload by lazy {
     File(config().getString("payload")).readText(Charset.defaultCharset())
   }
@@ -39,18 +44,18 @@ class WebTest : AbstractVerticle() {
     vertx.createHttpServer().requestHandler {
 
       try {
-        when (it.path()) {
-          "/proxy" -> {
+        when {
+          it.path().startsWith("/proxy") -> {
             handleRequest(it)
           }
-          "/index" -> {
+          it.path().startsWith("/index") -> {
             it.response().end(index)
           }
           else -> {
             throw FileNotFoundException("Path not found");
           }
         }
-      } catch (e:FileNotFoundException){
+      } catch (e: FileNotFoundException) {
         logger.error("Path not found: ${it.path()}")
         it.response().setStatusCode(500).end(e.message)
       } catch (e: Throwable) {
@@ -63,61 +68,80 @@ class WebTest : AbstractVerticle() {
   }
 
   private fun handleRequest(req: HttpServerRequest) {
-    val url = String(base64Decode(req.getParam("url")))
-    val body = req.getParam("body")?.let {
-      Buffer.buffer(base64Decode(it))
+    val parsed = parseURI(req.uri()) ?: throw IllegalArgumentException()
+    val url = "${parsed.protocol}://${parsed.domain}" + if(parsed.uri.startsWith("/")) { parsed.uri }else { "/${parsed.uri}" }
+    val headers = JsonObject()
+    headers.mergeIn(basicHeader)
+    req.getParam("headers")?.let { headers.mergeIn(JsonObject(String(base64Decode(it)))) }
+    val referer = parseURI(req.getHeader("Referer"))
+    referer?.let {
+      headers.put("Referer","${it.protocol}://${it.domain}" + if(it.uri.startsWith("/")) { it.uri }else { "/${it.uri}" })
     }
-    val headers = req.getParam("headers")?.let { JsonObject(String(base64Decode(it))) }
-    val proxyReq = when (req.getParam("method")) {
-      HttpMethod.GET.name -> {
-        httpClient.getAbs(url)
+    logger.info("[Req]: $url")
+    req.bodyHandler { body ->
+
+      val proxyReq = when (parsed.method) {
+        HttpMethod.GET.name -> {
+          httpClient.getAbs(url)
+        }
+        HttpMethod.POST.name -> {
+          httpClient.postAbs(url)
+        }
+        HttpMethod.PUT.name -> {
+          httpClient.putAbs(url)
+        }
+        HttpMethod.DELETE.name -> {
+          httpClient.deleteAbs(url)
+        }
+        else -> {
+          throw Exception("Not supported method: ${req.getParam("method")}")
+        }
       }
-      HttpMethod.POST.name -> {
-        httpClient.postAbs(url)
+      headers.forEach {
+        proxyReq.putHeader(it.key, it.value as String)
       }
-      HttpMethod.PUT.name -> {
-        httpClient.putAbs(url)
-      }
-      HttpMethod.DELETE.name -> {
-        httpClient.deleteAbs(url)
-      }
-      else -> {
-        throw Exception("Not supported method: ${req.getParam("method")}")
-      }
-    }
-    headers?.forEach {
-      proxyReq.putHeader(it.key, it.value as String)
-    }
-    proxyReq.handler {
-      val isText = it.getHeader("content-type").startsWith("text/")
-      it.headers().filter {
-        it.key.toLowerCase()!="content-length"
-      }.forEach {
+      proxyReq.handler {
+        val isText = it.getHeader("Content-Type").startsWith("text/")
+        it.headers().filter {
+          it.key != "Content-Length"
+        }.forEach {
           req.response().putHeader(it.key, it.value)
-      }
-      if(isText){
-        val isHtml = it.getHeader("content-type").startsWith("text/html")
-        it.bodyHandler {
-          if(isHtml){
-            val htmlToken = it.toString(Charset.defaultCharset()).replace("<head>", "<head>$payload")
-            req.response().end(Buffer.buffer(htmlToken))
-          }else{
-            req.response().end(it)
+        }
+        if (isText) {
+          val isHtml = it.getHeader("Content-Type").startsWith("text/html")
+          it.bodyHandler {
+            if (isHtml) {
+              val htmlToken = it.toString(Charset.defaultCharset()).replace("<head>", "<head>$payload")
+              req.response().end(Buffer.buffer(htmlToken))
+            } else {
+              req.response().end(it)
+            }
+          }
+        } else {
+          req.response().putHeader("Content-Length", it.getHeader("Content-Length"))
+          it.handler {
+            req.response().write(it)
+          }.endHandler {
+            req.response().end()
           }
         }
-      }else {
-        req.response().putHeader("Content-Length",it.getHeader("Content-Length"))
-        it.handler {
-          req.response().write(it)
-        }.endHandler {
-          req.response().end()
-        }
+      }
+      if (body != null && body.length()>0) {
+        proxyReq.end(body)
+      } else {
+        proxyReq.end()
       }
     }
-    if (body != null) {
-      proxyReq.end(body)
-    } else {
-      proxyReq.end()
+  }
+
+  private fun parseURI(uri:String):ProxyRequest?{
+    if(!uri.contains("/proxy")){
+      return null
     }
+    val params = uri.substring("/proxy".length).split("/")
+    val method = params[1]
+    val protocol = params[2]
+    val domain = params[3]
+    return ProxyRequest(params[1],params[2],params[3],uri.substring("/proxy".length + 1 + method.length + 1 + protocol.length + 1 + domain.length))
   }
 }
