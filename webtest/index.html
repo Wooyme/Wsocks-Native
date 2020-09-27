@@ -77,7 +77,11 @@
   }
 
   function parseURL(method,old){
+    console.log(old);
     let url = base+'/'+method;
+    if(old.startsWith(myDomain)){
+      old = old.substr(0,myDomain.length);
+    }
     let [_domain, _protocol] = domainFromUrl(old);
     if(!_protocol){
       url+='/'+protocol;
@@ -88,7 +92,10 @@
           url+=old;
         }else{
           //old = "asd/123"
-          let myLocation = uponPathFromUrl(iframe.contentWindow.location.href.replace(base,''));
+          let myLocation = iframe.contentWindow.location.href.replace(url,'');
+          console.log(url);
+          console.log(myLocation);
+          console.log(old);
           url+=myLocation+old;
         }
       }else{

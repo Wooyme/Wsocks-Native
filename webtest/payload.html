@@ -23,43 +23,22 @@
   window.XMLHttpRequest = function () {
     return new Proxy(new XMLHttpRequest0(), XMLHttpRequest0Handler);
   }
-  let observer = new MutationObserver(function (m) {
-    m.forEach(record => {
-      let replaceList = [];
-      replaceList.push(record.target);
-      replaceList.concat(record.addedNodes);
-      replaceList.forEach(node => {
-        switch (node.nodeName.toLowerCase()) {
-          case "img":
-          case "video":
-          case "script":
-            replaceUrl(node, "src");
-            break;
-          case "link":
-          case "a":
-            replaceUrl(node, "href");
-            break;
-          case "form":
-            replaceUrl(node, "action");
-            break;
-        }
-      })
+  window.document0 = {
+    write:window.document.write,
+    createElement:window.document.createElement
+  };
+  window.document.write = function(any){
+    return window.document0.write(any);
+  }
+  window.document.createElement = function(any,options){
+    const element = window.document0.createElement(any,options);
+    Object.defineProperty(element,'src',{
+      set: function(src){
+        console.log(src);
+        this.src = src;
+      }
     })
-  });
-  window.addEventListener('DOMContentLoaded', (event) => {
-    observer.observe(document.querySelector('body'), {
-      attributes: true,
-      characterData: true,
-      childList: true,
-      subtree: true
-    });
-    document.querySelectorAll("img").forEach(v => replaceUrl(v, "src"));
-    document.querySelectorAll("video").forEach(v => replaceUrl(v, "src"));
-    document.querySelectorAll("script").forEach(v => replaceUrl(v, "src"));
-    document.querySelectorAll("link").forEach(v => replaceUrl(v, "href"));
-    document.querySelectorAll("a").forEach(v => replaceUrl(v, "href"));
-    document.querySelectorAll("form").forEach(v => replaceUrl(v, "action"))
-  });
+  }
   window.addEventListener('unload', function (event) {
     parent.postMessage("navigation", "*");
   });

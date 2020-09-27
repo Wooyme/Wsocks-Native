@@ -22,6 +22,22 @@
       <sshConfig authType="PASSWORD" host="www.zzyun.co" id="9abb85f6-bc3d-46e0-aa2a-b7e41d8f6125" port="22" customName="mobile" nameFormat="CUSTOM" />
       <sshConfig authType="PASSWORD" host="www.zzyun.co" id="4b2818b7-a0d7-48e9-896a-1bacacdee609" port="22" customName="v1" nameFormat="CUSTOM" />
       <sshConfig authType="PASSWORD" host="www.zzyun.co" id="a0bc15e3-af9c-4bd9-8c46-7a2c555abfad" port="22" customName="v2" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="959f4a83-cbf0-4aa0-861b-23554c82f96d" port="22" customName="desktop" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="9966986b-d8cb-43e5-b241-dcf2151591ab" port="22" customName="mobile" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="d5669f46-88cb-40d6-810e-47b7d48ea7f1" port="22" customName="v1" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="167ae738-ae24-4911-84c8-b4dded9b37e8" port="22" customName="v2" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="0d7ce35a-6681-44f9-86a0-6527528c5617" port="22" customName="desktop" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="3e2e3842-565a-45fb-a650-cbdbb93c9564" port="22" customName="mobile" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="f118f51c-3199-4120-800e-b2fdc91d2d5e" port="22" customName="v1" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="938deab4-f875-4939-a991-d6b5cff031b0" port="22" customName="v2" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="0cf60642-0a28-4c14-9f6c-3879a4222a26" port="22" customName="desktop" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="5140dc0d-5927-4538-9885-96ee1513e05b" port="22" customName="mobile" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="3a8ca574-cfd7-4088-b1c3-e7111166280e" port="22" customName="v1" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="bb146ba2-2587-403e-bf2e-eb2084944f72" port="22" customName="v2" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="ac749402-c72a-4b06-b14d-133369d23670" port="22" customName="desktop" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="3a14ceea-f967-4e91-a7b3-a286367e3057" port="22" customName="mobile" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="2784ac9d-d95a-4e8a-b308-c67b87754e6e" port="22" customName="v1" nameFormat="CUSTOM" />
+      <sshConfig authType="PASSWORD" host="www.zzyun.co" id="51218499-9361-42fe-94e2-51d01a79b793" port="22" customName="v2" nameFormat="CUSTOM" />
     </configs>
   </component>
 </project>

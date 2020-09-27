@@ -56,7 +56,7 @@ class WebTest : AbstractVerticle() {
         }
       } catch (e: FileNotFoundException) {
         logger.error("Path not found: ${it.path()}")
-        it.response().setStatusCode(500).end(e.message)
+        //it.response().setStatusCode(500).end(e.message)
       } catch (e: Throwable) {
         it.response().setStatusCode(500).end(e.message)
         e.printStackTrace()
@@ -72,13 +72,12 @@ class WebTest : AbstractVerticle() {
     val headers = JsonObject()
     headers.mergeIn(basicHeader)
     req.getParam("headers")?.let { headers.mergeIn(JsonObject(String(base64Decode(it)))) }
-    val referer = parseURI(req.getHeader("Referer"))
+    val referer = req.getHeader("Referer")?.let{ parseURI(it) }
     referer?.let {
       headers.put("Referer","${it.protocol}://${it.domain}" + if(it.uri.startsWith("/")) { it.uri }else { "/${it.uri}" })
     }
     logger.info("[Req]: $url")
     req.bodyHandler { body ->
-
       val proxyReq = when (parsed.method) {
         HttpMethod.GET.name -> {
           httpClient.getAbs(url)
