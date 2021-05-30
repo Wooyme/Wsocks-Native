@@ -2,7 +2,7 @@
 //
 // KCP - A Better ARQ Protocol Implementation
 // skywind3000 (at) gmail.com, 2010-2011
-//  
+//
 // Features:
 // + Average RTT reduce 30% - 40% vs traditional ARQ like tcp.
 // + Maximum RTT reduce three times vs tcp.
@@ -47,42 +47,52 @@ public abstract class KCP {
 
     // encode 8 bits unsigned int
     public static void ikcp_encode8u(byte[] p, int offset, byte c) {
-        p[0 + offset] = c;
+        p[offset] = c;
     }
 
     // decode 8 bits unsigned int
     public static byte ikcp_decode8u(byte[] p, int offset) {
-        return p[0 + offset];
+        return p[offset];
     }
 
     /* encode 16 bits unsigned int (msb) */
     public static void ikcp_encode16u(byte[] p, int offset, int w) {
-        p[offset + 0] = (byte) (w >> 8);
-        p[offset + 1] = (byte) (w >> 0);
+//        p[offset] = (byte) (w >> 8);
+//        p[offset + 1] = (byte) (w);
+        p[offset] = (byte) (w);
+        p[offset + 1] = (byte) (w >> 8);
     }
 
     /* decode 16 bits unsigned int (msb) */
     public static int ikcp_decode16u(byte[] p, int offset) {
-        int ret = (p[offset + 0] & 0xFF) << 8
-                | (p[offset + 1] & 0xFF);
-        return ret;
+//      return (p[offset] & 0xFF) << 8
+//              | (p[offset + 1] & 0xFF);
+      return (p[offset] & 0xFF)
+        | (p[offset + 1] & 0xFF) << 8;
     }
 
     /* encode 32 bits unsigned int (msb) */
     public static void ikcp_encode32u(byte[] p, int offset, long l) {
-        p[offset + 0] = (byte) (l >> 24);
-        p[offset + 1] = (byte) (l >> 16);
-        p[offset + 2] = (byte) (l >> 8);
-        p[offset + 3] = (byte) (l >> 0);
+//        p[offset] = (byte) (l >> 24);
+//        p[offset + 1] = (byte) (l >> 16);
+//        p[offset + 2] = (byte) (l >> 8);
+//        p[offset + 3] = (byte) (l);
+      p[offset] = (byte) (l);
+      p[offset + 1] = (byte) (l >> 8 );
+      p[offset + 2] = (byte) (l >> 16);
+      p[offset + 3] = (byte) (l >> 24);
     }
 
     /* decode 32 bits unsigned int (msb) */
     public static long ikcp_decode32u(byte[] p, int offset) {
-        long ret = (p[offset + 0] & 0xFFL) << 24
-                | (p[offset + 1] & 0xFFL) << 16
-                | (p[offset + 2] & 0xFFL) << 8
-                | p[offset + 3] & 0xFFL;
-        return ret;
+//      return (p[offset] & 0xFFL) << 24
+//              | (p[offset + 1] & 0xFFL) << 16
+//              | (p[offset + 2] & 0xFFL) << 8
+//              | p[offset + 3] & 0xFFL;
+      return (p[offset] & 0xFFL)
+        | (p[offset + 1] & 0xFFL) << 8
+        | (p[offset + 2] & 0xFFL) << 16
+        | (p[offset + 3] & 0xFFL) << 24;
     }
 
     public static void slice(ArrayList list, int start, int stop) {
@@ -634,7 +644,7 @@ public abstract class KCP {
         int change = 0;
         int lost = 0;
 
-        // 'ikcp_update' haven't been called. 
+        // 'ikcp_update' haven't been called.
         if (0 == updated) {
             return;
         }
@@ -833,9 +843,9 @@ public abstract class KCP {
     }
 
     //---------------------------------------------------------------------
-    // update state (call it repeatedly, every 10ms-100ms), or you can ask 
+    // update state (call it repeatedly, every 10ms-100ms), or you can ask
     // ikcp_check when to call it again (without ikcp_input/_send calling).
-    // 'current' - current timestamp in millisec. 
+    // 'current' - current timestamp in millisec.
     //---------------------------------------------------------------------
     public void Update(long current_) {
 
@@ -868,11 +878,11 @@ public abstract class KCP {
 
     //---------------------------------------------------------------------
     // Determine when should you invoke ikcp_update:
-    // returns when you should invoke ikcp_update in millisec, if there 
+    // returns when you should invoke ikcp_update in millisec, if there
     // is no ikcp_input/_send calling. you can call ikcp_update in that
     // time, instead of call update repeatly.
-    // Important to reduce unnacessary ikcp_update invoking. use it to 
-    // schedule ikcp_update (eg. implementing an epoll-like mechanism, 
+    // Important to reduce unnacessary ikcp_update invoking. use it to
+    // schedule ikcp_update (eg. implementing an epoll-like mechanism,
     // or optimize ikcp_update when handling massive kcp connections)
     //---------------------------------------------------------------------
     public long Check(long current_) {

@@ -1,0 +1,1 @@
+cmd_/home/wooyme/projects/Wsocks-Native/kernel/kila.o := arm-none-linux-gnueabi-ld -EL   -r -o /home/wooyme/projects/Wsocks-Native/kernel/kila.o /home/wooyme/projects/Wsocks-Native/kernel/main.o /home/wooyme/projects/Wsocks-Native/kernel/ikcp.o

@@ -8,16 +8,19 @@
         <outputRelativeToContentRoot value="true" />
         <module name="common" />
         <module name="test" />
+        <module name="client-core" />
         <module name="clientcore" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="center" target="8" />
       <module name="client" target="8" />
+      <module name="client-core" target="8" />
       <module name="clientcore" target="8" />
       <module name="common" target="1.8" />
       <module name="test" target="1.8" />
       <module name="wsocks" target="1.8" />
+      <module name="Wsocks-Native" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>
