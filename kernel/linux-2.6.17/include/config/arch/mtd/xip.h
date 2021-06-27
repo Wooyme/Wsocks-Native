@@ -1,0 +1,1 @@
+#define CONFIG_ARCH_MTD_XIP 1

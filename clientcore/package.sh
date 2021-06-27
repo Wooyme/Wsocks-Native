@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+javapackager -deploy -native installer -BuserJvmOptions=-Xmx=48m -BuserJvmOptions=-Xms=48m -BuserJvmOptions=-XX:MaxDirectMemorySize=24m -BuserJvmOptions=-Djdk.nio.maxCachedBufferSize=262144 -BuserJvmOptions=-XX:MinHeapFreeRatio=10 -BuserJvmOptions=-XX:MaxHeapFreeRatio=10 -Bicon=icon.png -name "Wsocks" -title "Wsocks" -srcfiles client-core-1.0-SNAPSHOT-jar-with-dependencies.jar -outdir out -outfile out -appclass client.Launcher

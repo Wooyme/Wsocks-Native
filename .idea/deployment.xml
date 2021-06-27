@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData">
+    <serverData>
+      <paths name="desktop">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/" local="$PROJECT_DIR$/center/desktop" web="/" />
+            <mapping local="$PROJECT_DIR$/common" />
+            <mapping local="$PROJECT_DIR$/clientcore" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="mobile">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/" local="$PROJECT_DIR$/center/mobile" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="v1">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/var/www/wordpress/client" local="$PROJECT_DIR$/center/v1" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="v2">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/var/www/wordpress/client/v2" local="$PROJECT_DIR$/center/v2" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>

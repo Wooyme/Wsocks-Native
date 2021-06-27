@@ -1,0 +1,1 @@
+#undef CONFIG_CARDMAN_4000

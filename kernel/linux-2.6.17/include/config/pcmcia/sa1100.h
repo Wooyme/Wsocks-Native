@@ -1,0 +1,1 @@
+#define CONFIG_PCMCIA_SA1100 1

@@ -1,0 +1,14 @@
+{
+  "id": "3076",
+  "lowendbox": true,
+  "host": "27.133.132.94",
+  "login": 3076,
+  "maxWaitSnd": 8000,
+  "WndSize": 256,
+  "mtu": 1200,
+  "center": {
+    "host": "www.zzyun.co",
+    "port": 80
+  }
+}
+

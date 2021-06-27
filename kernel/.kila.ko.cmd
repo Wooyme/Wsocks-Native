@@ -1,0 +1,1 @@
+cmd_/home/bencom/test/Wsocks-Native-memcached/kernel/kila.ko := arm-none-linux-gnueabi-ld -EL  -r -o /home/bencom/test/Wsocks-Native-memcached/kernel/kila.ko /home/bencom/test/Wsocks-Native-memcached/kernel/kila.o /home/bencom/test/Wsocks-Native-memcached/kernel/kila.mod.o

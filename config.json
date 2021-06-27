@@ -1,0 +1,31 @@
+{
+  "lowendbox": true,
+  "servers": [
+    {
+      "id": "11",
+      "core": "memcached",
+      "host": "182.236.88.235",
+      "login": 45,
+      "maxWaitSnd": 8000,
+      "WndSize": 256,
+      "mtu": 1200,
+      "center": {
+        "host": "120.53.27.21",
+        "port": 80
+      }
+    },
+    {
+      "id": "15",
+      "core": "redis",
+      "host": "103.101.179.233",
+      "login": 34,
+      "maxWaitSnd": 8000,
+      "WndSize": 256,
+      "mtu": 1200,
+      "center": {
+        "host": "120.53.27.21",
+        "port": 80
+      }
+    }
+  ]
+}

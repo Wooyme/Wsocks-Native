@@ -1,0 +1,1 @@
+#undef CONFIG_MCP_SA11X0

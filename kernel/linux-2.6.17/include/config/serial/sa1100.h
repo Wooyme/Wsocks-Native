@@ -1,0 +1,1 @@
+#define CONFIG_SERIAL_SA1100 1

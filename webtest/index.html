@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WSocks Web</title>
+</head>
+<body>
+<div>
+  <label>Url:</label>
+  <input id="url" type="text" value="https://www.baidu.com">
+  <button onclick="goto()">Go</button>
+</div>
+<script>
+  var myDomain = 'http://localhost:8090';
+  var base = myDomain+'/proxy';
+  var domain;
+  var protocol;
+  var iframe;
+  function goto(){
+    let url = document.getElementById("url").value;
+    [domain,protocol] = domainFromUrl(url);
+    iframe = document.createElement('iframe');
+    iframe.width = screen.width;
+    iframe.height = screen.height;
+    iframe.src = parseURL('GET',url)
+    document.body.appendChild(iframe);
+    detectNavigation(iframe,function(url){
+      if(!url.startsWith(base)) {
+        const [_domain,_protocol] = domainFromUrl(url);
+        console.log(_domain);
+        if(_domain!=null){
+          if(myDomain.indexOf(_domain)>0){
+            url = url.replace(_domain,domain);
+            console.log(url);
+          }else{
+            domain = _domain;
+          }
+        }
+        if(_protocol!=null){
+          protocol = _protocol;
+        }
+        iframe.src = parseURL('GET',url);
+      }
+    })
+  }
+  function domainFromUrl(url) {
+    const match=url.match(/^(https?)?:?\/\/([^\/]+)/im);
+    if(match){
+      return [match[2], match[1]];
+    }
+    return [null,null];
+  }
+
+  function uponPathFromUrl(url) {
+    const match = url.match(/^([\S]+\/)/im);
+    if(match){
+      return match[1];
+    }
+    return null;
+  }
+
+  function detectNavigation(iframe,callback){
+    let eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+    let eventer = window[eventMethod];
+    let messageEvent = eventMethod === "attachEvent" ? "onmessage" : "message";
+
+    eventer(messageEvent,function(e) {
+      let key = e.message ? "message" : "data";
+      let data = e[key];
+      console.log(data);
+      if(data==='navigation') {
+        setTimeout(function () {
+          callback(iframe.contentWindow.location.href);
+        }, 10);
+      }
+    },false);
+  }
+
+  function parseURL(method,old){
+    console.log(old);
+    let url = base+'/'+method;
+    if(old.startsWith(myDomain)){
+      old = old.substr(0,myDomain.length);
+    }
+    let [_domain, _protocol] = domainFromUrl(old);
+    if(!_protocol){
+      url+='/'+protocol;
+      if(!_domain){
+        url+='/'+domain;
+        if(old.startsWith('/')){
+          //old = "/asd/123"
+          url+=old;
+        }else{
+          //old = "asd/123"
+          let myLocation = iframe.contentWindow.location.href.replace(url,'');
+          console.log(url);
+          console.log(myLocation);
+          console.log(old);
+          url+=myLocation+old;
+        }
+      }else{
+        // old="//www.baidu.com/asd/123"
+        url+='/'+_domain+'/'+old.substr(2+_domain.length+1,old.length);
+      }
+    }else{
+      // old="https://www.baidu.com/asd/123"
+      url+='/'+_protocol+'/'+_domain+'/'+old.substr(_protocol.length+3+_domain.length+1,old.length);
+    }
+    return url;
+  }
+</script>
+</body>
+</html>

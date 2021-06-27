@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>SuperEngine-超级路由器</title>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.2/css/all.css">
+  <link href="../css/bootstrap.min.css" rel="stylesheet">
+  <link href="../css/mdb.min.css" rel="stylesheet">
+  <link href="../css/style.min.css" rel="stylesheet">
+  <script type="text/javascript" src="../js/jquery-3.4.1.min.js"></script>
+</head>
+
+<body>
+<!--Main Navigation-->
+<header>
+  <!-- Navbar -->
+  <nav class="navbar fixed-top navbar-expand-lg navbar-light white scrolling-navbar">
+    <div class="container">
+
+      <!-- Brand -->
+      <a class="navbar-brand waves-effect" href="#" target="_blank">
+        <strong class="blue-text">SuperEngine</strong>
+      </a>
+
+      <!-- Collapse -->
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+              aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Links -->
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+        <!-- Left -->
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="index.html">主页
+              <span class="sr-only">(current)</span>
+            </a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link waves-effect" href="#">Beta</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="#">我的账户</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link waves-effect" href="../info.html">相关信息</a>
+          </li>
+        </ul>
+
+        <!-- Right -->
+        <ul class="navbar-nav nav-flex-icons">
+          <li class="nav-item">
+            <a href="#" class="nav-link waves-effect" target="_blank">
+              <i class="fab fa-twitter"></i>
+            </a>
+          </li>
+        </ul>
+
+      </div>
+
+    </div>
+  </nav>
+  <!-- Navbar -->
+
+</header>
+<!--Main Navigation-->
+
+<!--Main layout-->
+<main class="mt-5 pt-5">
+  <div class="container">
+    <section class="text-center">
+      <p id="my-loading">节点加载中
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
+      </p>
+      <div id="list" class="row mb-4 wow fadeIn">
+      </div>
+    </section>
+  </div>
+</main>
+<div class="modal fade" id="connecting" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">提示</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div id="connecting-body" class="modal-body">
+        正在连接<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="sr-only">Loading...</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript" src="../js/popper.min.js"></script>
+<script type="text/javascript" src="../js/bootstrap.min.js"></script>
+<script type="text/javascript" src="../js/mdb.min.js"></script>
+<script type="text/javascript" src="../js/custom.js"></script>
+<script type="text/javascript">
+  // Animations initialization
+  new WOW().init();
+  var token;
+  (function () {
+    var code = getCookie("code");
+    token = getCookie("token");
+    if (code == null || token == null) {
+      alert("登录异常");
+      window.location.href = "../login.html";
+      return;
+    }
+    var json = JSON.parse(atob(code));
+    var user = json['user'];
+    var pass = json['pass'];
+    $.get(encodeURI("http://localhost:1078/start?user=" + user + "&pass=" + pass), function (data) {
+      if (data !== '') {
+        alert(data)
+      }
+    });
+    $.when($.ajax({
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=2"),
+      type: 'GET',
+      dataType: 'json',
+      headers: {'Authorization': 'Bearer ' + token}
+    }),$.ajax({
+      url: encodeURI("http://120.53.27.21/wp-json/wp/v2/posts?categories=3"),
+      type: 'GET',
+      dataType: 'json',
+      headers: {'Authorization': 'Bearer ' + token}
+    })).done(function(res1,res2){
+      var posts = res1[0];
+      (function() {
+        for (var i = 0; i < posts.length; i++) {
+          var obj = posts[i];
+          if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
+            var title = obj['title']['rendered'];
+            var res = obj['content']['rendered'].match(/[0-9\.]+/g);
+            var host = res[0];
+            var port = res[1];
+            $("#list").append(createCard(title, host, port, "memcached"));
+          }
+        }
+      })();
+      posts = res2[0];
+      (function() {
+        for (var i = 0; i < posts.length; i++) {
+          var obj = posts[i];
+          if ((new Date()) - (new Date(obj['modified'])) < 6 * 60 * 1000) {
+            var title = obj['title']['rendered'];
+            var res = obj['content']['rendered'].match(/[0-9\.]+/g);
+            var host = res[0];
+            var port = res[1];
+            $("#list").append(createCard(title, host, port, "redis"));
+          }
+        }
+      })();
+      $("#my-loading").css("display","none");
+    });
+    $("#connecting").on('hidden.bs.modal', function(){
+      $('#connecting-body').html("正在连接<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
+    });
+  })();
+
+  function createCard(name, host, port,type) {
+    return "<div class=\"col-lg-4 col-md-12 mb-4\">\n" +
+      "            <div class=\"card\" style=\"height:372px;\">\n" +
+      "              <div class=\"view overlay\">\n" +
+      "                  <img src=\"../img/alpha.png\" class=\"card-img-top\">\n" +
+      "              </div>\n" +
+      "              <div class=\"card-body\">\n" +
+      "                <h4 class=\"card-title\">" + name + "</h4>\n" +
+      "                <button type=\"button\" class=\"btn btn-primary\" onclick=\"findNode('" + name + "','" + host + "'," + port + ",'"+type+"')\">常规连接</button>\n" +
+      "              </div>\n" +
+      "            </div>\n" +
+      "          </div>";
+  }
+
+  function findNode(name,host,port,type){
+    switch (type) {
+      case "memcached":
+        $.ajax({
+          url: encodeURI("http://120.53.27.21/client/memcached.json"),
+          type: 'GET',
+          dataType: 'json'
+        }).always(function(res){
+          nodeTest(name,host,port,type,res);
+        });
+        break;
+      case "redis":
+        $.ajax({
+          url: encodeURI("http://120.53.27.21/client/redis.json"),
+          type: 'GET',
+          dataType: 'json'
+        }).always(function(res){
+          nodeTest(name,host,port,type,res);
+        });
+        break;
+    }
+  }
+
+  function nodeTest(name,host,port,type,nodes){
+    $("#connecting-body").html("正在寻找合适的中继通道,大约需要10s左右<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
+    $('#connecting').modal();
+    $.ajax({
+      url:"http://localhost:1078/test/"+type,
+      type: 'POST',
+      dataType: 'json',
+      contentType: 'application/json',
+      data: JSON.stringify(nodes)
+    }).always(function(res){
+      if(res.status===1){
+        connect(name,host,port,type,res.ip);
+      }else{
+        $("#connecting-body").html("无可用的中继通道("+JSON.stringify(res)+")");
+      }
+    })
+  }
+
+  function connect(name, host, port,type,next) {
+    $("#connecting-body").html("正在连接<span class=\"spinner-border spinner-border-sm\" role=\"status\" aria-hidden=\"true\"></span><span class=\"sr-only\">Loading...</span>");
+    $.get("http://localhost:1078/connect?token=" + token + "&host=" + host + "&port=" + port + "&type="+type+"&name=" + name + "&client-next=" + next, function (data) {
+      if (data != null && data !== '') {
+        $('#connecting-body').html('连接失败' + data);
+      } else {
+        $('#connecting-body').html('连接成功');
+      }
+    });
+  }
+</script>
+</body>
+
+</html>

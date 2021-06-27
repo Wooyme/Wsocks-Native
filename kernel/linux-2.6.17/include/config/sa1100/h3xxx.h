@@ -1,0 +1,1 @@
+#define CONFIG_SA1100_H3XXX 1

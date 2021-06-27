@@ -1,0 +1,1 @@
+#define CONFIG_PCMCIA_LOAD_CIS 1

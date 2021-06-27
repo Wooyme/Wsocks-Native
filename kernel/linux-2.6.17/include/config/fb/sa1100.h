@@ -1,0 +1,1 @@
+#define CONFIG_FB_SA1100 1
